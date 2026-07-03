@@ -19,14 +19,18 @@ bool Runtime::create_session(const SessionSpec& spec) {
 }
 
 bool Runtime::submit_turn(const TurnSpec& spec) {
+    return submit_turn_with_id(spec).has_value();
+}
+
+std::optional<std::string> Runtime::submit_turn_with_id(const TurnSpec& spec) {
     auto session = session_manager_.get(spec.session_id);
     if (!session.has_value()) {
-        return false;
+        return std::nullopt;
     }
 
     if (session->status == SessionStatus::Finished ||
         session->status == SessionStatus::Cancelled) {
-        return false;
+        return std::nullopt;
     }
 
     const TimePoint now = std::chrono::steady_clock::now();
@@ -44,10 +48,11 @@ bool Runtime::submit_turn(const TurnSpec& spec) {
     ready.enqueued_at = now;
     ready.spec = spec;
 
+    const std::string turn_id = ready.turn_id;
     scheduler_.enqueue(std::move(ready));
     session_manager_.mark_ready(spec.session_id);
 
-    return true;
+    return turn_id;
 }
 
 std::optional<RuntimeRunResult> Runtime::run_once() {
@@ -66,7 +71,7 @@ std::optional<RuntimeRunResult> Runtime::run_once() {
 
     BackendResult backend_result = backend_.run(ready->spec);
 
-    session_manager_.mark_finished(ready->session_id);
+    session_manager_.mark_ready(ready->session_id);
 
     RuntimeRunResult result;
     result.turn = std::move(*ready);
@@ -89,6 +94,10 @@ int Runtime::run_until_idle() {
     }
 
     return executed;
+}
+
+std::size_t Runtime::queued_turn_count() const {
+    return scheduler_.size();
 }
 
 std::optional<SessionState> Runtime::get_session(

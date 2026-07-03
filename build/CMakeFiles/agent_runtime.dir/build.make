@@ -156,10 +156,24 @@ CMakeFiles/agent_runtime.dir/src/runtime.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/agent_runtime.dir/src/runtime.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/silviachen/Documents/Software/agent-session-runtime/src/runtime.cpp -o CMakeFiles/agent_runtime.dir/src/runtime.cpp.s
 
+CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o: CMakeFiles/agent_runtime.dir/flags.make
+CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o: /Users/silviachen/Documents/Software/agent-session-runtime/src/runtime_service.cpp
+CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o: CMakeFiles/agent_runtime.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o -MF CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o.d -o CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o -c /Users/silviachen/Documents/Software/agent-session-runtime/src/runtime_service.cpp
+
+CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/silviachen/Documents/Software/agent-session-runtime/src/runtime_service.cpp > CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.i
+
+CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/silviachen/Documents/Software/agent-session-runtime/src/runtime_service.cpp -o CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.s
+
 CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o: CMakeFiles/agent_runtime.dir/flags.make
 CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o: /Users/silviachen/Documents/Software/agent-session-runtime/src/scheduler.cpp
 CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o: CMakeFiles/agent_runtime.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o -MF CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o.d -o CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o -c /Users/silviachen/Documents/Software/agent-session-runtime/src/scheduler.cpp
 
 CMakeFiles/agent_runtime.dir/src/scheduler.cpp.i: cmake_force
@@ -173,7 +187,7 @@ CMakeFiles/agent_runtime.dir/src/scheduler.cpp.s: cmake_force
 CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o: CMakeFiles/agent_runtime.dir/flags.make
 CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o: /Users/silviachen/Documents/Software/agent-session-runtime/src/session_manager.cpp
 CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o: CMakeFiles/agent_runtime.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o -MF CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o.d -o CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o -c /Users/silviachen/Documents/Software/agent-session-runtime/src/session_manager.cpp
 
 CMakeFiles/agent_runtime.dir/src/session_manager.cpp.i: cmake_force
@@ -187,7 +201,7 @@ CMakeFiles/agent_runtime.dir/src/session_manager.cpp.s: cmake_force
 CMakeFiles/agent_runtime.dir/src/metrics.cpp.o: CMakeFiles/agent_runtime.dir/flags.make
 CMakeFiles/agent_runtime.dir/src/metrics.cpp.o: /Users/silviachen/Documents/Software/agent-session-runtime/src/metrics.cpp
 CMakeFiles/agent_runtime.dir/src/metrics.cpp.o: CMakeFiles/agent_runtime.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/agent_runtime.dir/src/metrics.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/agent_runtime.dir/src/metrics.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/agent_runtime.dir/src/metrics.cpp.o -MF CMakeFiles/agent_runtime.dir/src/metrics.cpp.o.d -o CMakeFiles/agent_runtime.dir/src/metrics.cpp.o -c /Users/silviachen/Documents/Software/agent-session-runtime/src/metrics.cpp
 
 CMakeFiles/agent_runtime.dir/src/metrics.cpp.i: cmake_force
@@ -206,6 +220,7 @@ agent_runtime_OBJECTS = \
 "CMakeFiles/agent_runtime.dir/src/mock_backend.cpp.o" \
 "CMakeFiles/agent_runtime.dir/src/openai_backend.cpp.o" \
 "CMakeFiles/agent_runtime.dir/src/runtime.cpp.o" \
+"CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o" \
 "CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o" \
 "CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o" \
 "CMakeFiles/agent_runtime.dir/src/metrics.cpp.o"
@@ -219,12 +234,13 @@ agent_runtime: CMakeFiles/agent_runtime.dir/src/backend.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/mock_backend.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/openai_backend.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/runtime.cpp.o
+agent_runtime: CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/src/metrics.cpp.o
 agent_runtime: CMakeFiles/agent_runtime.dir/build.make
 agent_runtime: CMakeFiles/agent_runtime.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable agent_runtime"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX executable agent_runtime"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/agent_runtime.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -13,6 +13,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/agent_runtime.dir/src/openai_backend.cpp.o.d"
   "CMakeFiles/agent_runtime.dir/src/runtime.cpp.o"
   "CMakeFiles/agent_runtime.dir/src/runtime.cpp.o.d"
+  "CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o"
+  "CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o.d"
   "CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o"
   "CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o.d"
   "CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o"

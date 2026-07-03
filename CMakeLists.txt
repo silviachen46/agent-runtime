@@ -13,6 +13,7 @@ add_executable(agent_runtime
     src/mock_backend.cpp
     src/openai_backend.cpp
     src/runtime.cpp
+    src/runtime_service.cpp
     src/scheduler.cpp
     src/session_manager.cpp
     src/metrics.cpp
@@ -23,3 +24,19 @@ target_include_directories(agent_runtime PRIVATE
 )
 
 target_link_libraries(agent_runtime pthread)
+
+add_executable(mixed_workload
+    benchmark/mixed_workload.cpp
+    src/backend.cpp
+    src/runtime.cpp
+    src/scheduler.cpp
+    src/session_manager.cpp
+    src/metrics.cpp
+)
+
+target_include_directories(mixed_workload PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party
+)
+
+target_link_libraries(mixed_workload pthread)

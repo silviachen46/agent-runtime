@@ -5,11 +5,21 @@
 #include <cstddef>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace ar {
 
+enum class SchedulerPolicyKind {
+    Fifo,
+    Priority,
+    SloAware,
+    SessionAwareHybrid
+};
+
 struct SchedulerConfig {
+    SchedulerPolicyKind policy_kind = SchedulerPolicyKind::SessionAwareHybrid;
+
     int foreground_boost = 50;
     int high_latency_boost = 30;
     int medium_latency_boost = 10;
@@ -18,8 +28,12 @@ struct SchedulerConfig {
     int resume_turn_boost = 50;
     int latency_sensitive_boost = 20;
 
+    double deadline_urgency_weight = 1000.0;
     double aging_boost_per_ms = 0.01;
+    double token_cost_penalty = 0.01;
 };
+
+std::string scheduler_policy_name(SchedulerPolicyKind policy_kind);
 
 SchedulingPolicy make_scheduling_policy(
     const SessionPolicy& policy,
@@ -38,6 +52,11 @@ public:
 
 private:
     double score_turn(const ReadyTurn& turn, TimePoint now) const;
+    bool is_better(
+        const ReadyTurn& candidate,
+        const ReadyTurn& current_best,
+        TimePoint now
+    ) const;
 
     SchedulerConfig config_;
 

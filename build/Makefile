@@ -129,12 +129,50 @@ agent_runtime/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/build
 .PHONY : agent_runtime/fast
 
+#=============================================================================
+# Target rules for targets named mixed_workload
+
+# Build rule for target.
+mixed_workload: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 mixed_workload
+.PHONY : mixed_workload
+
+# fast build rule for target.
+mixed_workload/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/build
+.PHONY : mixed_workload/fast
+
+benchmark/mixed_workload.o: benchmark/mixed_workload.cpp.o
+.PHONY : benchmark/mixed_workload.o
+
+# target to build an object file
+benchmark/mixed_workload.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/benchmark/mixed_workload.cpp.o
+.PHONY : benchmark/mixed_workload.cpp.o
+
+benchmark/mixed_workload.i: benchmark/mixed_workload.cpp.i
+.PHONY : benchmark/mixed_workload.i
+
+# target to preprocess a source file
+benchmark/mixed_workload.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/benchmark/mixed_workload.cpp.i
+.PHONY : benchmark/mixed_workload.cpp.i
+
+benchmark/mixed_workload.s: benchmark/mixed_workload.cpp.s
+.PHONY : benchmark/mixed_workload.s
+
+# target to generate assembly for a file
+benchmark/mixed_workload.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/benchmark/mixed_workload.cpp.s
+.PHONY : benchmark/mixed_workload.cpp.s
+
 src/backend.o: src/backend.cpp.o
 .PHONY : src/backend.o
 
 # target to build an object file
 src/backend.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/backend.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/backend.cpp.o
 .PHONY : src/backend.cpp.o
 
 src/backend.i: src/backend.cpp.i
@@ -143,6 +181,7 @@ src/backend.i: src/backend.cpp.i
 # target to preprocess a source file
 src/backend.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/backend.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/backend.cpp.i
 .PHONY : src/backend.cpp.i
 
 src/backend.s: src/backend.cpp.s
@@ -151,6 +190,7 @@ src/backend.s: src/backend.cpp.s
 # target to generate assembly for a file
 src/backend.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/backend.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/backend.cpp.s
 .PHONY : src/backend.cpp.s
 
 src/http_server.o: src/http_server.cpp.o
@@ -207,6 +247,7 @@ src/metrics.o: src/metrics.cpp.o
 # target to build an object file
 src/metrics.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/metrics.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/metrics.cpp.o
 .PHONY : src/metrics.cpp.o
 
 src/metrics.i: src/metrics.cpp.i
@@ -215,6 +256,7 @@ src/metrics.i: src/metrics.cpp.i
 # target to preprocess a source file
 src/metrics.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/metrics.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/metrics.cpp.i
 .PHONY : src/metrics.cpp.i
 
 src/metrics.s: src/metrics.cpp.s
@@ -223,6 +265,7 @@ src/metrics.s: src/metrics.cpp.s
 # target to generate assembly for a file
 src/metrics.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/metrics.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/metrics.cpp.s
 .PHONY : src/metrics.cpp.s
 
 src/mock_backend.o: src/mock_backend.cpp.o
@@ -279,6 +322,7 @@ src/runtime.o: src/runtime.cpp.o
 # target to build an object file
 src/runtime.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/runtime.cpp.o
 .PHONY : src/runtime.cpp.o
 
 src/runtime.i: src/runtime.cpp.i
@@ -287,6 +331,7 @@ src/runtime.i: src/runtime.cpp.i
 # target to preprocess a source file
 src/runtime.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/runtime.cpp.i
 .PHONY : src/runtime.cpp.i
 
 src/runtime.s: src/runtime.cpp.s
@@ -295,7 +340,32 @@ src/runtime.s: src/runtime.cpp.s
 # target to generate assembly for a file
 src/runtime.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/runtime.cpp.s
 .PHONY : src/runtime.cpp.s
+
+src/runtime_service.o: src/runtime_service.cpp.o
+.PHONY : src/runtime_service.o
+
+# target to build an object file
+src/runtime_service.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.o
+.PHONY : src/runtime_service.cpp.o
+
+src/runtime_service.i: src/runtime_service.cpp.i
+.PHONY : src/runtime_service.i
+
+# target to preprocess a source file
+src/runtime_service.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.i
+.PHONY : src/runtime_service.cpp.i
+
+src/runtime_service.s: src/runtime_service.cpp.s
+.PHONY : src/runtime_service.s
+
+# target to generate assembly for a file
+src/runtime_service.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/runtime_service.cpp.s
+.PHONY : src/runtime_service.cpp.s
 
 src/scheduler.o: src/scheduler.cpp.o
 .PHONY : src/scheduler.o
@@ -303,6 +373,7 @@ src/scheduler.o: src/scheduler.cpp.o
 # target to build an object file
 src/scheduler.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/scheduler.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/scheduler.cpp.o
 .PHONY : src/scheduler.cpp.o
 
 src/scheduler.i: src/scheduler.cpp.i
@@ -311,6 +382,7 @@ src/scheduler.i: src/scheduler.cpp.i
 # target to preprocess a source file
 src/scheduler.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/scheduler.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/scheduler.cpp.i
 .PHONY : src/scheduler.cpp.i
 
 src/scheduler.s: src/scheduler.cpp.s
@@ -319,6 +391,7 @@ src/scheduler.s: src/scheduler.cpp.s
 # target to generate assembly for a file
 src/scheduler.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/scheduler.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/scheduler.cpp.s
 .PHONY : src/scheduler.cpp.s
 
 src/session_manager.o: src/session_manager.cpp.o
@@ -327,6 +400,7 @@ src/session_manager.o: src/session_manager.cpp.o
 # target to build an object file
 src/session_manager.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/session_manager.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/session_manager.cpp.o
 .PHONY : src/session_manager.cpp.o
 
 src/session_manager.i: src/session_manager.cpp.i
@@ -335,6 +409,7 @@ src/session_manager.i: src/session_manager.cpp.i
 # target to preprocess a source file
 src/session_manager.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/session_manager.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/session_manager.cpp.i
 .PHONY : src/session_manager.cpp.i
 
 src/session_manager.s: src/session_manager.cpp.s
@@ -343,6 +418,7 @@ src/session_manager.s: src/session_manager.cpp.s
 # target to generate assembly for a file
 src/session_manager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/agent_runtime.dir/build.make CMakeFiles/agent_runtime.dir/src/session_manager.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mixed_workload.dir/build.make CMakeFiles/mixed_workload.dir/src/session_manager.cpp.s
 .PHONY : src/session_manager.cpp.s
 
 # Help Target
@@ -354,6 +430,10 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... agent_runtime"
+	@echo "... mixed_workload"
+	@echo "... benchmark/mixed_workload.o"
+	@echo "... benchmark/mixed_workload.i"
+	@echo "... benchmark/mixed_workload.s"
 	@echo "... src/backend.o"
 	@echo "... src/backend.i"
 	@echo "... src/backend.s"
@@ -375,6 +455,9 @@ help:
 	@echo "... src/runtime.o"
 	@echo "... src/runtime.i"
 	@echo "... src/runtime.s"
+	@echo "... src/runtime_service.o"
+	@echo "... src/runtime_service.i"
+	@echo "... src/runtime_service.s"
 	@echo "... src/scheduler.o"
 	@echo "... src/scheduler.i"
 	@echo "... src/scheduler.s"

@@ -23,9 +23,10 @@ SessionSpec make_foreground_agent_session(const std::string& session_id) {
     spec.policy.visibility = UserVisibility::Foreground;
     spec.policy.workload = WorkloadKind::Agent;
     spec.policy.latency = LatencySensitivity::High;
-    spec.policy.priority = 0;
+    spec.policy.priority = 10;
     spec.slo.ttft_target_ms = 800;
     spec.slo.resume_target_ms = 300;
+    spec.slo.deadline_ms = 500;
     return spec;
 }
 
@@ -38,6 +39,7 @@ SessionSpec make_background_batch_session(const std::string& session_id) {
     spec.policy.priority = 0;
     spec.slo.ttft_target_ms = 3000;
     spec.slo.resume_target_ms = 3000;
+    spec.slo.deadline_ms = 3000;
     return spec;
 }
 
@@ -164,15 +166,16 @@ double improvement_percent(double baseline, double improved) {
 
 int main() {
     SchedulerConfig fifo_config;
-    fifo_config.foreground_boost = 0;
-    fifo_config.high_latency_boost = 0;
-    fifo_config.medium_latency_boost = 0;
-    fifo_config.low_latency_penalty = 0;
-    fifo_config.resume_turn_boost = 0;
-    fifo_config.latency_sensitive_boost = 0;
-    fifo_config.aging_boost_per_ms = 0.0;
+    fifo_config.policy_kind = SchedulerPolicyKind::Fifo;
+
+    SchedulerConfig priority_config;
+    priority_config.policy_kind = SchedulerPolicyKind::Priority;
+
+    SchedulerConfig slo_config;
+    slo_config.policy_kind = SchedulerPolicyKind::SloAware;
 
     SchedulerConfig session_aware_config;
+    session_aware_config.policy_kind = SchedulerPolicyKind::SessionAwareHybrid;
 
     MockBackendConfig backend_config;
     backend_config.initial_ttft_ms = 10;
@@ -187,13 +190,25 @@ int main() {
         backend_config
     );
 
+    const BenchmarkResult priority = run_mixed_workload(
+        priority_config,
+        backend_config
+    );
+
+    const BenchmarkResult slo = run_mixed_workload(
+        slo_config,
+        backend_config
+    );
+
     const BenchmarkResult session_aware = run_mixed_workload(
         session_aware_config,
         backend_config
     );
 
     print_summary("FIFO baseline", fifo);
-    print_summary("Session-aware scheduler", session_aware);
+    print_summary("Priority scheduler", priority);
+    print_summary("SLO-aware scheduler", slo);
+    print_summary("Session-aware hybrid scheduler", session_aware);
 
     std::cout << std::fixed << std::setprecision(2);
 

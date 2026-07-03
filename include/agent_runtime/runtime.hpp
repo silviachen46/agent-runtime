@@ -5,6 +5,7 @@
 #include "session_manager.hpp"
 #include "types.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -27,10 +28,12 @@ public:
 
     bool create_session(const SessionSpec& spec);
     bool submit_turn(const TurnSpec& spec);
+    std::optional<std::string> submit_turn_with_id(const TurnSpec& spec);
 
     std::optional<RuntimeRunResult> run_once();
     int run_until_idle();
 
+    std::size_t queued_turn_count() const;
     std::optional<SessionState> get_session(const std::string& session_id) const;
 
 private:

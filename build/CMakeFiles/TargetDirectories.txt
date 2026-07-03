@@ -1,3 +1,4 @@
 /Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles/agent_runtime.dir
+/Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles/mixed_workload.dir
 /Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles/edit_cache.dir
 /Users/silviachen/Documents/Software/agent-session-runtime/build/CMakeFiles/rebuild_cache.dir
