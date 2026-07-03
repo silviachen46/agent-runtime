@@ -56,10 +56,6 @@ std::size_t Scheduler::size() const {
     return ready_queue_.size();
 }
 
-std::size_t Scheduler::size() const {
-    std::lock_guard<std::mutex> lock(mu_);
-    return ready_queue_.size();
-}
 
 double Scheduler::score_turn(const ReadyTurn& turn, TimePoint now) const {
     double score = turn.scheduling_policy.effective_priority;

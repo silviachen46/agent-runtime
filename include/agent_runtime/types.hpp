@@ -101,4 +101,41 @@ namespace ar {
         bool is_first_token = false;
         bool done = false;
     };
+
+    struct ScheduledRequest {
+    std::string request_id;
+    std::string session_id;
+    std::string workflow_id;
+    std::string step_id;
+
+    int priority = 0;
+    int deadline_ms = 0;
+    int ttft_target_ms = 0;
+    int resume_target_ms = 0;
+
+    std::string prompt;
+    int max_tokens = 256;
+    double temperature = 0.2;
+
+    bool is_resume = false;
+
+    long long arrival_ts_ms = 0;
+};
+
+struct ScheduleResponse {
+    std::string request_id;
+    std::string session_id;
+    std::string workflow_id;
+    std::string step_id;
+
+    std::string status;
+    std::string output;
+
+    int queue_wait_ms = 0;
+    int ttft_ms = 0;
+    int total_latency_ms = 0;
+    int output_tokens = 0;
+
+    bool deadline_missed = false;
+};
 }

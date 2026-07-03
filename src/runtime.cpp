@@ -1,0 +1,104 @@
+#include "agent_runtime/runtime.hpp"
+
+#include <chrono>
+#include <string>
+#include <utility>
+
+namespace ar {
+
+Runtime::Runtime(
+    SchedulerConfig scheduler_config,
+    MockBackendConfig backend_config
+)
+    : scheduler_config_(scheduler_config),
+      scheduler_(scheduler_config_),
+      backend_(backend_config) {}
+
+bool Runtime::create_session(const SessionSpec& spec) {
+    return session_manager_.create_session(spec);
+}
+
+bool Runtime::submit_turn(const TurnSpec& spec) {
+    auto session = session_manager_.get(spec.session_id);
+    if (!session.has_value()) {
+        return false;
+    }
+
+    if (session->status == SessionStatus::Finished ||
+        session->status == SessionStatus::Cancelled) {
+        return false;
+    }
+
+    const TimePoint now = std::chrono::steady_clock::now();
+
+    ReadyTurn ready;
+    ready.turn_id = next_turn_id();
+    ready.session_id = spec.session_id;
+    ready.session_policy = session->policy;
+    ready.scheduling_policy = make_scheduling_policy(
+    session->policy,
+    scheduler_config_
+);
+    ready.slo = session->slo;
+    ready.turn_type = spec.turn_type;
+    ready.enqueued_at = now;
+    ready.spec = spec;
+
+    scheduler_.enqueue(std::move(ready));
+    session_manager_.mark_ready(spec.session_id);
+
+    return true;
+}
+
+std::optional<RuntimeRunResult> Runtime::run_once() {
+    auto ready = scheduler_.pick_next();
+    if (!ready.has_value()) {
+        return std::nullopt;
+    }
+
+    const TimePoint started_at = std::chrono::steady_clock::now();
+
+    const auto queue_wait_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        started_at - ready->enqueued_at
+    ).count();
+
+    session_manager_.mark_running(ready->session_id);
+
+    BackendResult backend_result = backend_.run(ready->spec);
+
+    session_manager_.mark_finished(ready->session_id);
+
+    RuntimeRunResult result;
+    result.turn = std::move(*ready);
+    result.backend_result = std::move(backend_result);
+    result.queue_wait_ms = static_cast<int>(queue_wait_ms);
+
+    return result;
+}
+
+int Runtime::run_until_idle() {
+    int executed = 0;
+
+    while (true) {
+        auto result = run_once();
+        if (!result.has_value()) {
+            break;
+        }
+
+        ++executed;
+    }
+
+    return executed;
+}
+
+std::optional<SessionState> Runtime::get_session(
+    const std::string& session_id
+) const {
+    return session_manager_.get(session_id);
+}
+
+std::string Runtime::next_turn_id() {
+    return "turn_" + std::to_string(next_turn_seq_++);
+}
+
+} // namespace ar
