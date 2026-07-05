@@ -10,9 +10,18 @@ Runtime::Runtime(
     SchedulerConfig scheduler_config,
     MockBackendConfig backend_config
 )
+    : Runtime(
+          scheduler_config,
+          make_mock_backend(backend_config)
+      ) {}
+
+Runtime::Runtime(
+    SchedulerConfig scheduler_config,
+    std::shared_ptr<Backend> backend
+)
     : scheduler_config_(scheduler_config),
       scheduler_(scheduler_config_),
-      backend_(backend_config) {}
+      backend_(std::move(backend)) {}
 
 bool Runtime::create_session(const SessionSpec& spec) {
     return session_manager_.create_session(spec);
@@ -55,7 +64,7 @@ std::optional<std::string> Runtime::submit_turn_with_id(const TurnSpec& spec) {
     return turn_id;
 }
 
-std::optional<RuntimeRunResult> Runtime::run_once() {
+std::optional<RuntimeAdmittedTurn> Runtime::admit_next() {
     auto ready = scheduler_.pick_next();
     if (!ready.has_value()) {
         return std::nullopt;
@@ -69,14 +78,34 @@ std::optional<RuntimeRunResult> Runtime::run_once() {
 
     session_manager_.mark_running(ready->session_id);
 
-    BackendResult backend_result = backend_.run(ready->spec);
+    RuntimeAdmittedTurn admitted;
+    admitted.turn = std::move(*ready);
+    admitted.queue_wait_ms = static_cast<int>(queue_wait_ms);
 
-    session_manager_.mark_ready(ready->session_id);
+    return admitted;
+}
+
+BackendResult Runtime::execute_backend(const TurnSpec& spec) const {
+    return backend_->run(spec);
+}
+
+void Runtime::complete_turn(const ReadyTurn& turn) {
+    session_manager_.mark_ready(turn.session_id);
+}
+
+std::optional<RuntimeRunResult> Runtime::run_once() {
+    auto admitted = admit_next();
+    if (!admitted.has_value()) {
+        return std::nullopt;
+    }
+
+    BackendResult backend_result = execute_backend(admitted->turn.spec);
+    complete_turn(admitted->turn);
 
     RuntimeRunResult result;
-    result.turn = std::move(*ready);
+    result.turn = std::move(admitted->turn);
     result.backend_result = std::move(backend_result);
-    result.queue_wait_ms = static_cast<int>(queue_wait_ms);
+    result.queue_wait_ms = admitted->queue_wait_ms;
 
     return result;
 }

@@ -66,6 +66,53 @@ json to_json(const ScheduleResponse& resp) {
     };
 }
 
+json to_json(const MetricsSummary& summary) {
+    return json{
+        {"count", summary.count},
+        {"queue_wait_ms", {
+            {"avg", summary.avg_queue_wait_ms},
+            {"p50", summary.p50_queue_wait_ms},
+            {"p95", summary.p95_queue_wait_ms},
+            {"p99", summary.p99_queue_wait_ms}
+        }},
+        {"ttft_ms", {
+            {"avg", summary.avg_ttft_ms},
+            {"p50", summary.p50_ttft_ms},
+            {"p95", summary.p95_ttft_ms},
+            {"p99", summary.p99_ttft_ms}
+        }},
+        {"total_latency_ms", {
+            {"avg", summary.avg_total_latency_ms},
+            {"p50", summary.p50_total_latency_ms},
+            {"p95", summary.p95_total_latency_ms},
+            {"p99", summary.p99_total_latency_ms}
+        }},
+        {"avg_output_tokens", summary.avg_output_tokens},
+        {"deadline_missed_count", summary.deadline_missed_count},
+        {"deadline_miss_rate", summary.deadline_miss_rate}
+    };
+}
+
+json to_json(const RuntimeServiceSnapshot& state) {
+    return json{
+        {"status", "ok"},
+        {"scheduler_policy", state.scheduler_policy},
+        {"queue", {
+            {"queued_turns", state.queued_turns},
+            {"max_runtime_queue_depth", state.max_runtime_queue_depth}
+        }},
+        {"backend", {
+            {"inflight_requests", state.inflight_backend_requests},
+            {"max_inflight_requests", state.max_inflight_backend_requests}
+        }},
+        {"requests", {
+            {"completed", state.completed_requests},
+            {"rejected", state.rejected_requests}
+        }},
+        {"metrics", to_json(state.metrics)}
+    };
+}
+
 json error_json(const std::string& message) {
     return json{
         {"status", "error"},
@@ -75,10 +122,16 @@ json error_json(const std::string& message) {
 
 } // namespace
 
-HttpServer::HttpServer(std::string host, int port, ScheduleHandler handler)
+HttpServer::HttpServer(
+    std::string host,
+    int port,
+    ScheduleHandler handler,
+    StateHandler state_handler
+)
     : host_(std::move(host)),
       port_(port),
-      schedule_handler_(std::move(handler)) {}
+      schedule_handler_(std::move(handler)),
+      state_handler_(std::move(state_handler)) {}
 
 void HttpServer::start() {
     httplib::Server server;
@@ -90,6 +143,18 @@ void HttpServer::start() {
         };
 
         res.set_content(body.dump(2), "application/json");
+    });
+
+    server.Get("/v1/runtime/state", [this](const httplib::Request&, httplib::Response& res) {
+        if (!state_handler_) {
+            res.status = 503;
+            res.set_content(error_json("runtime state unavailable").dump(2), "application/json");
+            return;
+        }
+
+        RuntimeServiceSnapshot state = state_handler_();
+        res.status = 200;
+        res.set_content(to_json(state).dump(2), "application/json");
     });
 
     server.Post("/v1/schedule", [this](const httplib::Request& req, httplib::Response& res) {

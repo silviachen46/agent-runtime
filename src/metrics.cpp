@@ -44,8 +44,11 @@ void MetricsCollector::record(
     record.turn_type = turn.turn_type;
     record.queue_wait_ms = queue_wait_ms;
     record.ttft_ms = backend_result.ttft_ms;
-    record.total_latency_ms = backend_result.total_latency_ms;
+    record.total_latency_ms = queue_wait_ms + backend_result.total_latency_ms;
     record.output_tokens = backend_result.output_tokens;
+    record.deadline_missed =
+        turn.slo.deadline_ms > 0 &&
+        record.total_latency_ms > turn.slo.deadline_ms;
 
     records_.push_back(std::move(record));
 }
@@ -95,6 +98,10 @@ MetricsSummary MetricsCollector::summarize_records(
         ttfts.push_back(record.ttft_ms);
         total_latencies.push_back(record.total_latency_ms);
         output_tokens.push_back(record.output_tokens);
+
+        if (record.deadline_missed) {
+            ++summary.deadline_missed_count;
+        }
     }
 
     summary.avg_queue_wait_ms = average(queue_waits);
@@ -113,6 +120,9 @@ MetricsSummary MetricsCollector::summarize_records(
     summary.p99_total_latency_ms = percentile(total_latencies, 0.99);
 
     summary.avg_output_tokens = average(output_tokens);
+    summary.deadline_miss_rate =
+        static_cast<double>(summary.deadline_missed_count) /
+        static_cast<double>(records.size());
 
     return summary;
 }

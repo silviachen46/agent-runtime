@@ -17,6 +17,7 @@ struct TurnRecord {
     int ttft_ms = 0;
     int total_latency_ms = 0;
     int output_tokens = 0;
+    bool deadline_missed = false;
 };
 
 struct MetricsSummary {
@@ -38,6 +39,9 @@ struct MetricsSummary {
     double p99_total_latency_ms = 0.0;
 
     double avg_output_tokens = 0.0;
+
+    std::size_t deadline_missed_count = 0;
+    double deadline_miss_rate = 0.0;
 };
 
 class MetricsCollector {

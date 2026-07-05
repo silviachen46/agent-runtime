@@ -105,11 +105,44 @@ ScheduleResponse make_completed_response(
 } // namespace
 
 RuntimeService::RuntimeService(
+    RuntimeServiceConfig service_config,
     SchedulerConfig scheduler_config,
     MockBackendConfig backend_config
 )
-    : runtime_(scheduler_config, backend_config),
-      worker_(&RuntimeService::worker_loop, this) {}
+    : RuntimeService(
+          service_config,
+          scheduler_config,
+          make_mock_backend(backend_config)
+      ) {}
+
+RuntimeService::RuntimeService(
+    RuntimeServiceConfig service_config,
+    SchedulerConfig scheduler_config,
+    std::shared_ptr<Backend> backend
+)
+    : service_config_(service_config),
+      scheduler_config_(scheduler_config),
+      runtime_(scheduler_config, std::move(backend)) {
+    if (service_config_.max_inflight_backend_requests == 0) {
+        service_config_.max_inflight_backend_requests = 1;
+    }
+
+    if (service_config_.max_runtime_queue_depth == 0) {
+        service_config_.max_runtime_queue_depth = 1;
+    }
+
+    dispatcher_ = std::thread(&RuntimeService::dispatcher_loop, this);
+}
+
+RuntimeService::RuntimeService(
+    SchedulerConfig scheduler_config,
+    MockBackendConfig backend_config
+)
+    : RuntimeService(
+          RuntimeServiceConfig{},
+          scheduler_config,
+          backend_config
+      ) {}
 
 RuntimeService::~RuntimeService() {
     {
@@ -119,8 +152,14 @@ RuntimeService::~RuntimeService() {
 
     cv_.notify_all();
 
-    if (worker_.joinable()) {
-        worker_.join();
+    if (dispatcher_.joinable()) {
+        dispatcher_.join();
+    }
+
+    for (auto& execution_thread : execution_threads_) {
+        if (execution_thread.thread.joinable()) {
+            execution_thread.thread.join();
+        }
     }
 }
 
@@ -129,6 +168,15 @@ ScheduleResponse RuntimeService::schedule(const ScheduledRequest& req) {
 
     {
         std::lock_guard<std::mutex> lock(mu_);
+        reap_finished_threads_locked();
+
+        if (stopping_ ||
+            runtime_.queued_turn_count() >= service_config_.max_runtime_queue_depth) {
+            ++rejected_requests_;
+            ScheduleResponse resp = make_base_response(req);
+            resp.status = "rejected";
+            return resp;
+        }
 
         if (!runtime_.get_session(req.session_id).has_value()) {
             runtime_.create_session(make_session_spec(req));
@@ -136,6 +184,7 @@ ScheduleResponse RuntimeService::schedule(const ScheduledRequest& req) {
 
         const auto turn_id = runtime_.submit_turn_with_id(make_turn_spec(req));
         if (!turn_id.has_value()) {
+            ++rejected_requests_;
             ScheduleResponse resp = make_base_response(req);
             resp.status = "rejected";
             return resp;
@@ -151,29 +200,127 @@ ScheduleResponse RuntimeService::schedule(const ScheduledRequest& req) {
     return make_completed_response(req, future.get());
 }
 
-void RuntimeService::worker_loop() {
+RuntimeServiceSnapshot RuntimeService::snapshot() const {
+    std::lock_guard<std::mutex> lock(mu_);
+
+    RuntimeServiceSnapshot state;
+    state.scheduler_policy =
+        scheduler_policy_name(scheduler_config_.policy_kind);
+    state.queued_turns = runtime_.queued_turn_count();
+    state.inflight_backend_requests = inflight_backend_requests_;
+    state.completed_requests = completed_requests_;
+    state.rejected_requests = rejected_requests_;
+    state.max_inflight_backend_requests =
+        service_config_.max_inflight_backend_requests;
+    state.max_runtime_queue_depth =
+        service_config_.max_runtime_queue_depth;
+    state.metrics = metrics_.summarize_all();
+    return state;
+}
+
+void RuntimeService::dispatcher_loop() {
     while (true) {
-        {
-            std::unique_lock<std::mutex> lock(mu_);
-            cv_.wait(lock, [this] {
-                return stopping_ || runtime_.queued_turn_count() > 0;
-            });
+        std::unique_lock<std::mutex> lock(mu_);
+        cv_.wait(lock, [this] {
+            return stopping_ || can_dispatch_locked();
+        });
 
-            if (stopping_ && runtime_.queued_turn_count() == 0) {
-                break;
-            }
+        reap_finished_threads_locked();
+
+        if (stopping_ &&
+            runtime_.queued_turn_count() == 0 &&
+            inflight_backend_requests_ == 0) {
+            break;
         }
 
-        auto result = runtime_.run_once();
-        if (!result.has_value()) {
-            continue;
+        dispatch_ready_turns_locked();
+    }
+}
+
+bool RuntimeService::can_dispatch_locked() const {
+    return runtime_.queued_turn_count() > 0 &&
+           inflight_backend_requests_ <
+               service_config_.max_inflight_backend_requests;
+}
+
+void RuntimeService::dispatch_ready_turns_locked() {
+    while (can_dispatch_locked()) {
+        auto admitted = runtime_.admit_next();
+        if (!admitted.has_value()) {
+            return;
         }
 
+        ++inflight_backend_requests_;
+        launch_backend_execution_locked(std::move(*admitted));
+    }
+}
+
+void RuntimeService::launch_backend_execution_locked(
+    RuntimeAdmittedTurn admitted
+) {
+    auto done = std::make_shared<std::atomic_bool>(false);
+
+    ExecutionThread execution_thread;
+    execution_thread.done = done;
+    execution_thread.thread = std::thread(
+        [this, admitted = std::move(admitted), done]() mutable {
+            BackendResult backend_result =
+                runtime_.execute_backend(admitted.turn.spec);
+
+            finish_backend_execution(
+                std::move(admitted),
+                std::move(backend_result)
+            );
+
+            done->store(true);
+        }
+    );
+
+    execution_threads_.push_back(std::move(execution_thread));
+}
+
+void RuntimeService::finish_backend_execution(
+    RuntimeAdmittedTurn admitted,
+    BackendResult backend_result
+) {
+    {
         std::lock_guard<std::mutex> lock(mu_);
-        auto it = pending_.find(result->turn.turn_id);
+
+        runtime_.complete_turn(admitted.turn);
+
+        RuntimeRunResult result;
+        result.turn = std::move(admitted.turn);
+        result.backend_result = std::move(backend_result);
+        result.queue_wait_ms = admitted.queue_wait_ms;
+
+        metrics_.record(
+            result.turn,
+            result.backend_result,
+            result.queue_wait_ms
+        );
+
+        auto it = pending_.find(result.turn.turn_id);
         if (it != pending_.end()) {
-            it->second.set_value(std::move(*result));
+            it->second.set_value(std::move(result));
             pending_.erase(it);
+        }
+
+        --inflight_backend_requests_;
+        ++completed_requests_;
+    }
+
+    cv_.notify_all();
+}
+
+void RuntimeService::reap_finished_threads_locked() {
+    for (auto it = execution_threads_.begin(); it != execution_threads_.end();) {
+        if (it->done->load()) {
+            if (it->thread.joinable()) {
+                it->thread.join();
+            }
+            it = execution_threads_.erase(it);
+        } else {
+            ++it;
         }
     }
 }
