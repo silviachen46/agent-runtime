@@ -1,0 +1,67 @@
+{
+  "all": {
+    "avg_output_tokens": 16.0,
+    "client_latency_ms": {
+      "avg": 2344.4785714285713,
+      "p50": 2405.0,
+      "p95": 3403.0,
+      "p99": 3718.0
+    },
+    "count": 140,
+    "deadline_miss_rate": 0.12142857142857143,
+    "deadline_missed_count": 17,
+    "queue_wait_ms": {
+      "avg": 1717.4857142857143,
+      "p50": 1912.0,
+      "p95": 3073.0,
+      "p99": 3385.0
+    },
+    "total_latency_ms": {
+      "avg": 2330.9714285714285,
+      "p50": 2397.0,
+      "p95": 3392.0,
+      "p99": 3702.0
+    },
+    "ttft_ms": {
+      "avg": 613.4857142857143,
+      "p50": 322.0,
+      "p95": 2103.0,
+      "p99": 2151.0
+    }
+  },
+  "case": "agent_resume",
+  "completed": 140,
+  "failed": 0,
+  "focus": {
+    "avg_output_tokens": 64.0,
+    "client_latency_ms": {
+      "avg": 2453.3,
+      "p50": 2383.0,
+      "p95": 3078.0,
+      "p99": 3078.0
+    },
+    "count": 20,
+    "deadline_miss_rate": 0.0,
+    "deadline_missed_count": 0,
+    "queue_wait_ms": {
+      "avg": 276.25,
+      "p50": 138.0,
+      "p95": 988.0,
+      "p99": 988.0
+    },
+    "total_latency_ms": {
+      "avg": 2440.95,
+      "p50": 2376.0,
+      "p95": 3069.0,
+      "p99": 3069.0
+    },
+    "ttft_ms": {
+      "avg": 2164.7,
+      "p50": 2095.0,
+      "p95": 2773.0,
+      "p99": 2773.0
+    }
+  },
+  "mode": "runtime",
+  "total": 140
+}
