@@ -87,6 +87,16 @@ void Scheduler::enqueue(ReadyTurn turn) {
     ready_queue_.push_back(std::move(turn));
 }
 
+void Scheduler::update_config(const SchedulerConfig& config) {
+    std::lock_guard<std::mutex> lock(mu_);
+    config_ = config;
+}
+
+SchedulerConfig Scheduler::config() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    return config_;
+}
+
 bool Scheduler::empty() const {
     std::lock_guard<std::mutex> lock(mu_);
     return ready_queue_.empty();

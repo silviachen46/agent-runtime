@@ -47,6 +47,9 @@ public:
     void enqueue(ReadyTurn turn);
     std::optional<ReadyTurn> pick_next();
 
+    void update_config(const SchedulerConfig& config);
+    SchedulerConfig config() const;
+
     bool empty() const;
     std::size_t size() const;
 

@@ -63,6 +63,8 @@ void print_usage(const char* program) {
         << "  --max-inflight=N\n"
         << "  --max-queue=N\n"
         << "  --admission-window-ms=N\n"
+        << "  --is-adaptive=true|false\n"
+        << "  --adaptive-window-size=N\n"
         << "  --policy=fifo|priority|slo|session_aware\n";
 }
 
@@ -96,6 +98,22 @@ AppConfig parse_args(int argc, char** argv) {
         } else if (starts_with(arg, "--admission-window-ms=")) {
             config.service.admission_window_ms =
                 std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--is-adaptive=")) {
+            const std::string value = value_after_equals(arg);
+            if (value == "true" || value == "1" || value == "yes") {
+                config.service.is_adaptive = true;
+            } else if (value == "false" || value == "0" || value == "no") {
+                config.service.is_adaptive = false;
+            } else {
+                throw std::invalid_argument(
+                    "--is-adaptive must be true or false"
+                );
+            }
+        } else if (starts_with(arg, "--adaptive-window-size=")) {
+            config.service.adaptive_window_size =
+                static_cast<std::size_t>(
+                    std::stoul(value_after_equals(arg))
+                );
         } else if (starts_with(arg, "--policy=")) {
             config.scheduler.policy_kind =
                 parse_policy_kind(value_after_equals(arg));

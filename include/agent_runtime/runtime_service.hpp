@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <cstddef>
+#include <deque>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -23,10 +24,13 @@ struct RuntimeServiceConfig {
     std::size_t max_inflight_backend_requests = 8;
     std::size_t max_runtime_queue_depth = 1000;
     int admission_window_ms = 0;
+    bool is_adaptive = false;
+    std::size_t adaptive_window_size = 50;
 };
 
 struct RuntimeServiceSnapshot {
     std::string scheduler_policy;
+    SchedulerConfig scheduler_config;
     std::size_t queued_turns = 0;
     std::size_t inflight_backend_requests = 0;
     std::size_t completed_requests = 0;
@@ -34,6 +38,9 @@ struct RuntimeServiceSnapshot {
     std::size_t max_inflight_backend_requests = 0;
     std::size_t max_runtime_queue_depth = 0;
     int admission_window_ms = 0;
+    bool is_adaptive = false;
+    std::size_t adaptive_window_size = 0;
+    std::size_t adaptive_updates = 0;
     MetricsSummary metrics;
 };
 
@@ -67,6 +74,13 @@ private:
         std::shared_ptr<std::atomic_bool> done;
     };
 
+    struct AdaptiveRecord {
+        bool focus = false;
+        bool deadline_missed = false;
+        int queue_wait_ms = 0;
+        int total_latency_ms = 0;
+    };
+
     void dispatcher_loop();
     bool can_dispatch_locked() const;
     void dispatch_ready_turns_locked();
@@ -76,11 +90,16 @@ private:
         BackendResult backend_result
     );
     void reap_finished_threads_locked();
+    void record_adaptive_feedback_locked(const RuntimeRunResult& result);
+    void maybe_update_adaptive_policy_locked();
 
     RuntimeServiceConfig service_config_;
+    SchedulerConfig baseline_scheduler_config_;
     SchedulerConfig scheduler_config_;
     Runtime runtime_;
     MetricsCollector metrics_;
+    std::deque<AdaptiveRecord> adaptive_records_;
+    std::size_t adaptive_updates_ = 0;
     std::thread dispatcher_;
 
     mutable std::mutex mu_;

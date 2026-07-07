@@ -1,5 +1,6 @@
 #include "agent_runtime/runtime_service.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <utility>
 
@@ -103,6 +104,44 @@ ScheduleResponse make_completed_response(
     return resp;
 }
 
+double bounded_multiplier(double value, double multiplier, double min_value, double max_value) {
+    return std::clamp(value * multiplier, min_value, max_value);
+}
+
+int move_toward_int(int value, int target, int step) {
+    if (value < target) {
+        return std::min(value + step, target);
+    }
+
+    if (value > target) {
+        return std::max(value - step, target);
+    }
+
+    return value;
+}
+
+double move_toward_double(double value, double target, double step_fraction) {
+    return value + (target - value) * step_fraction;
+}
+
+int percentile(std::vector<int> values, double q) {
+    if (values.empty()) {
+        return 0;
+    }
+
+    std::sort(values.begin(), values.end());
+    const auto idx = static_cast<std::size_t>(
+        static_cast<double>(values.size() - 1) * q
+    );
+    return values[idx];
+}
+
+bool is_focus_turn(const ReadyTurn& turn) {
+    return turn.turn_type == TurnType::ResumeGenerate ||
+           turn.session_policy.visibility == UserVisibility::Foreground ||
+           turn.session_policy.priority > 0;
+}
+
 } // namespace
 
 RuntimeService::RuntimeService(
@@ -122,6 +161,7 @@ RuntimeService::RuntimeService(
     std::shared_ptr<Backend> backend
 )
     : service_config_(service_config),
+      baseline_scheduler_config_(scheduler_config),
       scheduler_config_(scheduler_config),
       runtime_(scheduler_config, std::move(backend)) {
     if (service_config_.max_inflight_backend_requests == 0) {
@@ -134,6 +174,10 @@ RuntimeService::RuntimeService(
 
     if (service_config_.admission_window_ms < 0) {
         service_config_.admission_window_ms = 0;
+    }
+
+    if (service_config_.adaptive_window_size == 0) {
+        service_config_.adaptive_window_size = 1;
     }
 
     dispatcher_ = std::thread(&RuntimeService::dispatcher_loop, this);
@@ -211,6 +255,7 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
     RuntimeServiceSnapshot state;
     state.scheduler_policy =
         scheduler_policy_name(scheduler_config_.policy_kind);
+    state.scheduler_config = scheduler_config_;
     state.queued_turns = runtime_.queued_turn_count();
     state.inflight_backend_requests = inflight_backend_requests_;
     state.completed_requests = completed_requests_;
@@ -220,6 +265,9 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
     state.max_runtime_queue_depth =
         service_config_.max_runtime_queue_depth;
     state.admission_window_ms = service_config_.admission_window_ms;
+    state.is_adaptive = service_config_.is_adaptive;
+    state.adaptive_window_size = service_config_.adaptive_window_size;
+    state.adaptive_updates = adaptive_updates_;
     state.metrics = metrics_.summarize_all();
     return state;
 }
@@ -316,6 +364,8 @@ void RuntimeService::finish_backend_execution(
             result.backend_result,
             result.queue_wait_ms
         );
+        record_adaptive_feedback_locked(result);
+        maybe_update_adaptive_policy_locked();
 
         auto it = pending_.find(result.turn.turn_id);
         if (it != pending_.end()) {
@@ -328,6 +378,170 @@ void RuntimeService::finish_backend_execution(
     }
 
     cv_.notify_all();
+}
+
+void RuntimeService::record_adaptive_feedback_locked(
+    const RuntimeRunResult& result
+) {
+    if (!service_config_.is_adaptive) {
+        return;
+    }
+
+    const int total_latency_ms =
+        result.queue_wait_ms + result.backend_result.total_latency_ms;
+
+    AdaptiveRecord record;
+    record.focus = is_focus_turn(result.turn);
+    record.deadline_missed =
+        result.turn.slo.deadline_ms > 0 &&
+        total_latency_ms > result.turn.slo.deadline_ms;
+    record.queue_wait_ms = result.queue_wait_ms;
+    record.total_latency_ms = total_latency_ms;
+
+    adaptive_records_.push_back(record);
+}
+
+void RuntimeService::maybe_update_adaptive_policy_locked() {
+    if (!service_config_.is_adaptive ||
+        adaptive_records_.size() < service_config_.adaptive_window_size) {
+        return;
+    }
+
+    std::vector<int> all_queue_waits;
+    std::vector<int> focus_queue_waits;
+    std::vector<int> all_latencies;
+    std::size_t all_misses = 0;
+    std::size_t focus_count = 0;
+    std::size_t focus_misses = 0;
+
+    all_queue_waits.reserve(adaptive_records_.size());
+    all_latencies.reserve(adaptive_records_.size());
+
+    for (const auto& record : adaptive_records_) {
+        all_queue_waits.push_back(record.queue_wait_ms);
+        all_latencies.push_back(record.total_latency_ms);
+
+        if (record.deadline_missed) {
+            ++all_misses;
+        }
+
+        if (record.focus) {
+            ++focus_count;
+            focus_queue_waits.push_back(record.queue_wait_ms);
+
+            if (record.deadline_missed) {
+                ++focus_misses;
+            }
+        }
+    }
+
+    const double all_miss_rate =
+        static_cast<double>(all_misses) /
+        static_cast<double>(adaptive_records_.size());
+    const double focus_miss_rate = focus_count == 0
+        ? 0.0
+        : static_cast<double>(focus_misses) /
+          static_cast<double>(focus_count);
+
+    const int all_queue_p95 = percentile(all_queue_waits, 0.95);
+    const int focus_queue_p95 = percentile(focus_queue_waits, 0.95);
+    const int all_latency_p95 = percentile(all_latencies, 0.95);
+
+    constexpr double kFocusMissTarget = 0.10;
+    constexpr double kAllMissTarget = 0.20;
+    SchedulerConfig next = scheduler_config_;
+
+    if (focus_miss_rate > kFocusMissTarget) {
+        next.foreground_boost = std::min(next.foreground_boost + 8, 200);
+        next.high_latency_boost = std::min(next.high_latency_boost + 5, 150);
+        next.deadline_urgency_weight = bounded_multiplier(
+            next.deadline_urgency_weight,
+            1.15,
+            baseline_scheduler_config_.deadline_urgency_weight,
+            20000.0
+        );
+        next.token_cost_penalty = bounded_multiplier(
+            next.token_cost_penalty,
+            1.20,
+            baseline_scheduler_config_.token_cost_penalty,
+            8.0
+        );
+
+        service_config_.admission_window_ms =
+            std::min(service_config_.admission_window_ms + 5, 50);
+    }
+
+    if (all_miss_rate > kAllMissTarget || all_queue_p95 > 5000) {
+        next.aging_boost_per_ms = bounded_multiplier(
+            next.aging_boost_per_ms,
+            1.20,
+            baseline_scheduler_config_.aging_boost_per_ms,
+            0.20
+        );
+        next.token_cost_penalty = bounded_multiplier(
+            next.token_cost_penalty,
+            1.10,
+            baseline_scheduler_config_.token_cost_penalty,
+            10.0
+        );
+
+        if (focus_miss_rate <= kFocusMissTarget) {
+            next.foreground_boost = move_toward_int(
+                next.foreground_boost,
+                baseline_scheduler_config_.foreground_boost,
+                5
+            );
+            next.high_latency_boost = move_toward_int(
+                next.high_latency_boost,
+                baseline_scheduler_config_.high_latency_boost,
+                5
+            );
+            next.deadline_urgency_weight = move_toward_double(
+                next.deadline_urgency_weight,
+                baseline_scheduler_config_.deadline_urgency_weight,
+                0.10
+            );
+        }
+    }
+
+    if (focus_miss_rate <= kFocusMissTarget &&
+        all_miss_rate <= kAllMissTarget &&
+        all_queue_p95 < 1000 &&
+        focus_queue_p95 < 1000 &&
+        all_latency_p95 > 0) {
+        next.foreground_boost = move_toward_int(
+            next.foreground_boost,
+            baseline_scheduler_config_.foreground_boost,
+            2
+        );
+        next.high_latency_boost = move_toward_int(
+            next.high_latency_boost,
+            baseline_scheduler_config_.high_latency_boost,
+            2
+        );
+        next.deadline_urgency_weight = move_toward_double(
+            next.deadline_urgency_weight,
+            baseline_scheduler_config_.deadline_urgency_weight,
+            0.05
+        );
+        next.aging_boost_per_ms = move_toward_double(
+            next.aging_boost_per_ms,
+            baseline_scheduler_config_.aging_boost_per_ms,
+            0.05
+        );
+        next.token_cost_penalty = move_toward_double(
+            next.token_cost_penalty,
+            baseline_scheduler_config_.token_cost_penalty,
+            0.05
+        );
+        service_config_.admission_window_ms =
+            std::max(service_config_.admission_window_ms - 1, 0);
+    }
+
+    scheduler_config_ = next;
+    runtime_.update_scheduler_config(scheduler_config_);
+    adaptive_records_.clear();
+    ++adaptive_updates_;
 }
 
 void RuntimeService::reap_finished_threads_locked() {

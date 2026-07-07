@@ -125,6 +125,15 @@ int Runtime::run_until_idle() {
     return executed;
 }
 
+void Runtime::update_scheduler_config(const SchedulerConfig& config) {
+    scheduler_config_ = config;
+    scheduler_.update_config(config);
+}
+
+SchedulerConfig Runtime::scheduler_config() const {
+    return scheduler_config_;
+}
+
 std::size_t Runtime::queued_turn_count() const {
     return scheduler_.size();
 }

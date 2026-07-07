@@ -93,10 +93,26 @@ json to_json(const MetricsSummary& summary) {
     };
 }
 
+json to_json(const SchedulerConfig& config) {
+    return json{
+        {"policy", scheduler_policy_name(config.policy_kind)},
+        {"foreground_boost", config.foreground_boost},
+        {"high_latency_boost", config.high_latency_boost},
+        {"medium_latency_boost", config.medium_latency_boost},
+        {"low_latency_penalty", config.low_latency_penalty},
+        {"resume_turn_boost", config.resume_turn_boost},
+        {"latency_sensitive_boost", config.latency_sensitive_boost},
+        {"deadline_urgency_weight", config.deadline_urgency_weight},
+        {"aging_boost_per_ms", config.aging_boost_per_ms},
+        {"token_cost_penalty", config.token_cost_penalty}
+    };
+}
+
 json to_json(const RuntimeServiceSnapshot& state) {
     return json{
         {"status", "ok"},
         {"scheduler_policy", state.scheduler_policy},
+        {"scheduler_config", to_json(state.scheduler_config)},
         {"queue", {
             {"queued_turns", state.queued_turns},
             {"max_runtime_queue_depth", state.max_runtime_queue_depth}
@@ -109,6 +125,11 @@ json to_json(const RuntimeServiceSnapshot& state) {
         {"requests", {
             {"completed", state.completed_requests},
             {"rejected", state.rejected_requests}
+        }},
+        {"adaptive", {
+            {"is_adaptive", state.is_adaptive},
+            {"adaptive_window_size", state.adaptive_window_size},
+            {"adaptive_updates", state.adaptive_updates}
         }},
         {"metrics", to_json(state.metrics)}
     };

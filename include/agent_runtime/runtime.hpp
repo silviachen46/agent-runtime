@@ -47,6 +47,9 @@ public:
     std::optional<RuntimeRunResult> run_once();
     int run_until_idle();
 
+    void update_scheduler_config(const SchedulerConfig& config);
+    SchedulerConfig scheduler_config() const;
+
     std::size_t queued_turn_count() const;
     std::optional<SessionState> get_session(const std::string& session_id) const;
 
