@@ -1,0 +1,67 @@
+{
+  "all": {
+    "avg_output_tokens": 201.14285714285714,
+    "client_latency_ms": {
+      "avg": 16640.866666666665,
+      "p50": 18488.0,
+      "p95": 27430.0,
+      "p99": 28828.0
+    },
+    "count": 105,
+    "deadline_miss_rate": 0.8571428571428571,
+    "deadline_missed_count": 90,
+    "queue_wait_ms": {
+      "avg": 8667.561904761904,
+      "p50": 10528.0,
+      "p95": 18258.0,
+      "p99": 20592.0
+    },
+    "total_latency_ms": {
+      "avg": 16624.47619047619,
+      "p50": 18479.0,
+      "p95": 27423.0,
+      "p99": 28814.0
+    },
+    "ttft_ms": {
+      "avg": 7956.914285714286,
+      "p50": 10232.0,
+      "p95": 10518.0,
+      "p99": 10519.0
+    }
+  },
+  "case": "codegen_decode_pressure",
+  "completed": 105,
+  "failed": 0,
+  "focus": {
+    "avg_output_tokens": 64.0,
+    "client_latency_ms": {
+      "avg": 5003.766666666666,
+      "p50": 2982.0,
+      "p95": 5580.0,
+      "p99": 15323.0
+    },
+    "count": 30,
+    "deadline_miss_rate": 0.5,
+    "deadline_missed_count": 15,
+    "queue_wait_ms": {
+      "avg": 2267.6,
+      "p50": 75.0,
+      "p95": 2968.0,
+      "p99": 12711.0
+    },
+    "total_latency_ms": {
+      "avg": 4987.8,
+      "p50": 2957.0,
+      "p95": 5564.0,
+      "p99": 15305.0
+    },
+    "ttft_ms": {
+      "avg": 2720.2,
+      "p50": 2605.0,
+      "p95": 2939.0,
+      "p99": 2940.0
+    }
+  },
+  "mode": "runtime",
+  "total": 105
+}
