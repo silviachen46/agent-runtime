@@ -1,5 +1,6 @@
 #include "agent_runtime/runtime_service.hpp"
 
+#include <chrono>
 #include <utility>
 
 namespace ar {
@@ -131,6 +132,10 @@ RuntimeService::RuntimeService(
         service_config_.max_runtime_queue_depth = 1;
     }
 
+    if (service_config_.admission_window_ms < 0) {
+        service_config_.admission_window_ms = 0;
+    }
+
     dispatcher_ = std::thread(&RuntimeService::dispatcher_loop, this);
 }
 
@@ -214,6 +219,7 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
         service_config_.max_inflight_backend_requests;
     state.max_runtime_queue_depth =
         service_config_.max_runtime_queue_depth;
+    state.admission_window_ms = service_config_.admission_window_ms;
     state.metrics = metrics_.summarize_all();
     return state;
 }
@@ -224,6 +230,18 @@ void RuntimeService::dispatcher_loop() {
         cv_.wait(lock, [this] {
             return stopping_ || can_dispatch_locked();
         });
+
+        if (!stopping_ && service_config_.admission_window_ms > 0) {
+            cv_.wait_for(
+                lock,
+                std::chrono::milliseconds(
+                    service_config_.admission_window_ms
+                ),
+                [this] {
+                    return stopping_;
+                }
+            );
+        }
 
         reap_finished_threads_locked();
 

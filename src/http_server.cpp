@@ -103,7 +103,8 @@ json to_json(const RuntimeServiceSnapshot& state) {
         }},
         {"backend", {
             {"inflight_requests", state.inflight_backend_requests},
-            {"max_inflight_requests", state.max_inflight_backend_requests}
+            {"max_inflight_requests", state.max_inflight_backend_requests},
+            {"admission_window_ms", state.admission_window_ms}
         }},
         {"requests", {
             {"completed", state.completed_requests},

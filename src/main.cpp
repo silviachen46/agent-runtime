@@ -62,6 +62,7 @@ void print_usage(const char* program) {
         << "  --api-key=KEY\n"
         << "  --max-inflight=N\n"
         << "  --max-queue=N\n"
+        << "  --admission-window-ms=N\n"
         << "  --policy=fifo|priority|slo|session_aware\n";
 }
 
@@ -92,6 +93,9 @@ AppConfig parse_args(int argc, char** argv) {
                 static_cast<std::size_t>(
                     std::stoul(value_after_equals(arg))
                 );
+        } else if (starts_with(arg, "--admission-window-ms=")) {
+            config.service.admission_window_ms =
+                std::stoi(value_after_equals(arg));
         } else if (starts_with(arg, "--policy=")) {
             config.scheduler.policy_kind =
                 parse_policy_kind(value_after_equals(arg));

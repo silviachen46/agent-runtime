@@ -22,6 +22,7 @@ namespace ar {
 struct RuntimeServiceConfig {
     std::size_t max_inflight_backend_requests = 8;
     std::size_t max_runtime_queue_depth = 1000;
+    int admission_window_ms = 0;
 };
 
 struct RuntimeServiceSnapshot {
@@ -32,6 +33,7 @@ struct RuntimeServiceSnapshot {
     std::size_t rejected_requests = 0;
     std::size_t max_inflight_backend_requests = 0;
     std::size_t max_runtime_queue_depth = 0;
+    int admission_window_ms = 0;
     MetricsSummary metrics;
 };
 
