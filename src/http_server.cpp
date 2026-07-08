@@ -129,7 +129,13 @@ json to_json(const RuntimeServiceSnapshot& state) {
         {"adaptive", {
             {"is_adaptive", state.is_adaptive},
             {"adaptive_window_size", state.adaptive_window_size},
-            {"adaptive_updates", state.adaptive_updates}
+            {"adaptive_updates", state.adaptive_updates},
+            {"latency_budget_ratio", state.adaptive_latency_budget_ratio},
+            {"latency_budget_ms", state.adaptive_latency_budget_ms},
+            {"latency_baseline_p95_ms", state.adaptive_latency_baseline_p95_ms},
+            {"focus_queue_p95_target_ms", state.focus_queue_p95_target_ms},
+            {"starvation_threshold_ms", state.starvation_threshold_ms},
+            {"max_admission_window_ms", state.max_admission_window_ms}
         }},
         {"metrics", to_json(state.metrics)}
     };

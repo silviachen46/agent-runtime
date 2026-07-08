@@ -176,8 +176,33 @@ RuntimeService::RuntimeService(
         service_config_.admission_window_ms = 0;
     }
 
+    if (service_config_.max_admission_window_ms < 0) {
+        service_config_.max_admission_window_ms = 0;
+    }
+
+    service_config_.admission_window_ms = std::min(
+        service_config_.admission_window_ms,
+        service_config_.max_admission_window_ms
+    );
+
     if (service_config_.adaptive_window_size == 0) {
         service_config_.adaptive_window_size = 1;
+    }
+
+    if (service_config_.adaptive_latency_budget_ratio < 1.0) {
+        service_config_.adaptive_latency_budget_ratio = 1.0;
+    }
+
+    if (service_config_.adaptive_latency_budget_ms < 0) {
+        service_config_.adaptive_latency_budget_ms = 0;
+    }
+
+    if (service_config_.focus_queue_p95_target_ms < 0) {
+        service_config_.focus_queue_p95_target_ms = 0;
+    }
+
+    if (service_config_.starvation_threshold_ms < 0) {
+        service_config_.starvation_threshold_ms = 0;
     }
 
     dispatcher_ = std::thread(&RuntimeService::dispatcher_loop, this);
@@ -268,6 +293,18 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
     state.is_adaptive = service_config_.is_adaptive;
     state.adaptive_window_size = service_config_.adaptive_window_size;
     state.adaptive_updates = adaptive_updates_;
+    state.adaptive_latency_budget_ratio =
+        service_config_.adaptive_latency_budget_ratio;
+    state.adaptive_latency_budget_ms =
+        service_config_.adaptive_latency_budget_ms;
+    state.adaptive_latency_baseline_p95_ms =
+        adaptive_latency_baseline_p95_ms_;
+    state.focus_queue_p95_target_ms =
+        service_config_.focus_queue_p95_target_ms;
+    state.starvation_threshold_ms =
+        service_config_.starvation_threshold_ms;
+    state.max_admission_window_ms =
+        service_config_.max_admission_window_ms;
     state.metrics = metrics_.summarize_all();
     return state;
 }
@@ -449,11 +486,79 @@ void RuntimeService::maybe_update_adaptive_policy_locked() {
 
     constexpr double kFocusMissTarget = 0.10;
     constexpr double kAllMissTarget = 0.20;
+    if (adaptive_latency_baseline_p95_ms_ == 0 && all_latency_p95 > 0) {
+        adaptive_latency_baseline_p95_ms_ = all_latency_p95;
+    }
+
+    const int learned_latency_budget_ms =
+        adaptive_latency_baseline_p95_ms_ == 0
+            ? 0
+            : static_cast<int>(
+                  static_cast<double>(adaptive_latency_baseline_p95_ms_) *
+                  service_config_.adaptive_latency_budget_ratio
+              );
+
+    const int latency_budget_ms =
+        service_config_.adaptive_latency_budget_ms > 0
+            ? service_config_.adaptive_latency_budget_ms
+            : learned_latency_budget_ms;
+
+    const bool latency_budget_exceeded =
+        latency_budget_ms > 0 && all_latency_p95 > latency_budget_ms;
+    const bool focus_starving =
+        service_config_.starvation_threshold_ms > 0 &&
+        focus_queue_p95 >= service_config_.starvation_threshold_ms;
+    const bool focus_above_target =
+        service_config_.focus_queue_p95_target_ms > 0 &&
+        focus_queue_p95 > service_config_.focus_queue_p95_target_ms;
+
     SchedulerConfig next = scheduler_config_;
 
-    if (focus_miss_rate > kFocusMissTarget) {
+    if (latency_budget_exceeded) {
+        next.foreground_boost = move_toward_int(
+            next.foreground_boost,
+            baseline_scheduler_config_.foreground_boost,
+            8
+        );
+        next.resume_turn_boost = move_toward_int(
+            next.resume_turn_boost,
+            baseline_scheduler_config_.resume_turn_boost,
+            8
+        );
+        next.high_latency_boost = move_toward_int(
+            next.high_latency_boost,
+            baseline_scheduler_config_.high_latency_boost,
+            6
+        );
+        next.latency_sensitive_boost = move_toward_int(
+            next.latency_sensitive_boost,
+            baseline_scheduler_config_.latency_sensitive_boost,
+            4
+        );
+        next.deadline_urgency_weight = move_toward_double(
+            next.deadline_urgency_weight,
+            baseline_scheduler_config_.deadline_urgency_weight,
+            0.15
+        );
+        next.token_cost_penalty = move_toward_double(
+            next.token_cost_penalty,
+            baseline_scheduler_config_.token_cost_penalty,
+            0.20
+        );
+        next.aging_boost_per_ms = bounded_multiplier(
+            next.aging_boost_per_ms,
+            1.15,
+            baseline_scheduler_config_.aging_boost_per_ms,
+            0.50
+        );
+        service_config_.admission_window_ms =
+            std::max(service_config_.admission_window_ms - 5, 0);
+    } else if (focus_miss_rate > kFocusMissTarget || focus_above_target) {
         next.foreground_boost = std::min(next.foreground_boost + 8, 200);
         next.high_latency_boost = std::min(next.high_latency_boost + 5, 150);
+        next.resume_turn_boost = std::min(next.resume_turn_boost + 8, 200);
+        next.latency_sensitive_boost =
+            std::min(next.latency_sensitive_boost + 4, 120);
         next.deadline_urgency_weight = bounded_multiplier(
             next.deadline_urgency_weight,
             1.15,
@@ -468,7 +573,32 @@ void RuntimeService::maybe_update_adaptive_policy_locked() {
         );
 
         service_config_.admission_window_ms =
-            std::min(service_config_.admission_window_ms + 5, 50);
+            std::min(
+                service_config_.admission_window_ms + 5,
+                service_config_.max_admission_window_ms
+            );
+    }
+
+    if (focus_starving) {
+        next.foreground_boost = std::min(next.foreground_boost + 12, 240);
+        next.resume_turn_boost = std::min(next.resume_turn_boost + 12, 240);
+        next.deadline_urgency_weight = bounded_multiplier(
+            next.deadline_urgency_weight,
+            1.20,
+            baseline_scheduler_config_.deadline_urgency_weight,
+            25000.0
+        );
+        next.aging_boost_per_ms = bounded_multiplier(
+            next.aging_boost_per_ms,
+            1.35,
+            baseline_scheduler_config_.aging_boost_per_ms,
+            0.75
+        );
+        next.token_cost_penalty = std::max(next.token_cost_penalty * 0.85, 0.0);
+        service_config_.admission_window_ms = std::min(
+            service_config_.admission_window_ms,
+            service_config_.max_admission_window_ms
+        );
     }
 
     if (all_miss_rate > kAllMissTarget || all_queue_p95 > 5000) {
@@ -504,7 +634,9 @@ void RuntimeService::maybe_update_adaptive_policy_locked() {
         }
     }
 
-    if (focus_miss_rate <= kFocusMissTarget &&
+    if (!latency_budget_exceeded &&
+        !focus_starving &&
+        focus_miss_rate <= kFocusMissTarget &&
         all_miss_rate <= kAllMissTarget &&
         all_queue_p95 < 1000 &&
         focus_queue_p95 < 1000 &&
@@ -537,6 +669,12 @@ void RuntimeService::maybe_update_adaptive_policy_locked() {
         service_config_.admission_window_ms =
             std::max(service_config_.admission_window_ms - 1, 0);
     }
+
+    service_config_.admission_window_ms = std::clamp(
+        service_config_.admission_window_ms,
+        0,
+        service_config_.max_admission_window_ms
+    );
 
     scheduler_config_ = next;
     runtime_.update_scheduler_config(scheduler_config_);

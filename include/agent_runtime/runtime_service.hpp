@@ -26,6 +26,11 @@ struct RuntimeServiceConfig {
     int admission_window_ms = 0;
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 50;
+    double adaptive_latency_budget_ratio = 1.10;
+    int adaptive_latency_budget_ms = 0;
+    int focus_queue_p95_target_ms = 3000;
+    int starvation_threshold_ms = 5000;
+    int max_admission_window_ms = 30;
 };
 
 struct RuntimeServiceSnapshot {
@@ -41,6 +46,12 @@ struct RuntimeServiceSnapshot {
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 0;
     std::size_t adaptive_updates = 0;
+    double adaptive_latency_budget_ratio = 0.0;
+    int adaptive_latency_budget_ms = 0;
+    int adaptive_latency_baseline_p95_ms = 0;
+    int focus_queue_p95_target_ms = 0;
+    int starvation_threshold_ms = 0;
+    int max_admission_window_ms = 0;
     MetricsSummary metrics;
 };
 
@@ -100,6 +111,7 @@ private:
     MetricsCollector metrics_;
     std::deque<AdaptiveRecord> adaptive_records_;
     std::size_t adaptive_updates_ = 0;
+    int adaptive_latency_baseline_p95_ms_ = 0;
     std::thread dispatcher_;
 
     mutable std::mutex mu_;

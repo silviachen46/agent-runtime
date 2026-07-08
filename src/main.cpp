@@ -65,6 +65,11 @@ void print_usage(const char* program) {
         << "  --admission-window-ms=N\n"
         << "  --is-adaptive=true|false\n"
         << "  --adaptive-window-size=N\n"
+        << "  --adaptive-latency-budget-ratio=R\n"
+        << "  --adaptive-latency-budget-ms=N\n"
+        << "  --focus-queue-p95-target-ms=N\n"
+        << "  --starvation-threshold-ms=N\n"
+        << "  --max-admission-window-ms=N\n"
         << "  --policy=fifo|priority|slo|session_aware\n";
 }
 
@@ -114,6 +119,21 @@ AppConfig parse_args(int argc, char** argv) {
                 static_cast<std::size_t>(
                     std::stoul(value_after_equals(arg))
                 );
+        } else if (starts_with(arg, "--adaptive-latency-budget-ratio=")) {
+            config.service.adaptive_latency_budget_ratio =
+                std::stod(value_after_equals(arg));
+        } else if (starts_with(arg, "--adaptive-latency-budget-ms=")) {
+            config.service.adaptive_latency_budget_ms =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--focus-queue-p95-target-ms=")) {
+            config.service.focus_queue_p95_target_ms =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--starvation-threshold-ms=")) {
+            config.service.starvation_threshold_ms =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--max-admission-window-ms=")) {
+            config.service.max_admission_window_ms =
+                std::stoi(value_after_equals(arg));
         } else if (starts_with(arg, "--policy=")) {
             config.scheduler.policy_kind =
                 parse_policy_kind(value_after_equals(arg));
