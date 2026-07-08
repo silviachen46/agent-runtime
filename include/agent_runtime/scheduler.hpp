@@ -13,6 +13,7 @@ namespace ar {
 enum class SchedulerPolicyKind {
     Fifo,
     Priority,
+    PriorityFair,
     SloAware,
     SessionAwareHybrid
 };

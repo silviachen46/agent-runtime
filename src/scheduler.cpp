@@ -36,6 +36,8 @@ std::string scheduler_policy_name(SchedulerPolicyKind policy_kind) {
             return "fifo";
         case SchedulerPolicyKind::Priority:
             return "priority";
+        case SchedulerPolicyKind::PriorityFair:
+            return "priority_fair";
         case SchedulerPolicyKind::SloAware:
             return "slo_aware";
         case SchedulerPolicyKind::SessionAwareHybrid:
@@ -111,6 +113,16 @@ std::size_t Scheduler::size() const {
 double Scheduler::score_turn(const ReadyTurn& turn, TimePoint now) const {
     if (config_.policy_kind == SchedulerPolicyKind::Priority) {
         return static_cast<double>(turn.session_policy.priority);
+    }
+
+    if (config_.policy_kind == SchedulerPolicyKind::PriorityFair) {
+        const auto wait_ms = wait_ms_for(turn, now);
+        double score = static_cast<double>(turn.session_policy.priority);
+        score += static_cast<double>(wait_ms) * config_.aging_boost_per_ms;
+        score += config_.deadline_urgency_weight * deadline_urgency(turn, now);
+        score -= static_cast<double>(turn.spec.max_tokens) *
+                 config_.token_cost_penalty;
+        return score;
     }
 
     if (config_.policy_kind == SchedulerPolicyKind::SloAware) {

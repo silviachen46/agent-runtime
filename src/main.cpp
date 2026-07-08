@@ -40,6 +40,10 @@ SchedulerPolicyKind parse_policy_kind(const std::string& value) {
         return SchedulerPolicyKind::Priority;
     }
 
+    if (value == "priority_fair" || value == "fair_priority") {
+        return SchedulerPolicyKind::PriorityFair;
+    }
+
     if (value == "slo" || value == "slo_aware") {
         return SchedulerPolicyKind::SloAware;
     }
@@ -70,7 +74,10 @@ void print_usage(const char* program) {
         << "  --focus-queue-p95-target-ms=N\n"
         << "  --starvation-threshold-ms=N\n"
         << "  --max-admission-window-ms=N\n"
-        << "  --policy=fifo|priority|slo|session_aware\n";
+        << "  --deadline-urgency-weight=N\n"
+        << "  --aging-boost-per-ms=N\n"
+        << "  --token-cost-penalty=N\n"
+        << "  --policy=fifo|priority|priority_fair|slo|session_aware\n";
 }
 
 AppConfig parse_args(int argc, char** argv) {
@@ -134,6 +141,15 @@ AppConfig parse_args(int argc, char** argv) {
         } else if (starts_with(arg, "--max-admission-window-ms=")) {
             config.service.max_admission_window_ms =
                 std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--deadline-urgency-weight=")) {
+            config.scheduler.deadline_urgency_weight =
+                std::stod(value_after_equals(arg));
+        } else if (starts_with(arg, "--aging-boost-per-ms=")) {
+            config.scheduler.aging_boost_per_ms =
+                std::stod(value_after_equals(arg));
+        } else if (starts_with(arg, "--token-cost-penalty=")) {
+            config.scheduler.token_cost_penalty =
+                std::stod(value_after_equals(arg));
         } else if (starts_with(arg, "--policy=")) {
             config.scheduler.policy_kind =
                 parse_policy_kind(value_after_equals(arg));
