@@ -38,6 +38,8 @@ std::string scheduler_policy_name(SchedulerPolicyKind policy_kind) {
             return "priority";
         case SchedulerPolicyKind::PriorityFair:
             return "priority_fair";
+        case SchedulerPolicyKind::PriorityTailAging:
+            return "priority_tail_aging";
         case SchedulerPolicyKind::SloAware:
             return "slo_aware";
         case SchedulerPolicyKind::SessionAwareHybrid:
@@ -120,6 +122,21 @@ double Scheduler::score_turn(const ReadyTurn& turn, TimePoint now) const {
         double score = static_cast<double>(turn.session_policy.priority);
         score += static_cast<double>(wait_ms) * config_.aging_boost_per_ms;
         score += config_.deadline_urgency_weight * deadline_urgency(turn, now);
+        score -= static_cast<double>(turn.spec.max_tokens) *
+                 config_.token_cost_penalty;
+        return score;
+    }
+
+    if (config_.policy_kind == SchedulerPolicyKind::PriorityTailAging) {
+        const auto wait_ms = wait_ms_for(turn, now);
+        const int64_t excess_wait_ms = std::max<int64_t>(
+            wait_ms - config_.tail_aging_threshold_ms,
+            0
+        );
+
+        double score = static_cast<double>(turn.session_policy.priority);
+        score += static_cast<double>(excess_wait_ms) *
+                 config_.tail_aging_boost_per_ms;
         score -= static_cast<double>(turn.spec.max_tokens) *
                  config_.token_cost_penalty;
         return score;

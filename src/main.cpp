@@ -44,6 +44,10 @@ SchedulerPolicyKind parse_policy_kind(const std::string& value) {
         return SchedulerPolicyKind::PriorityFair;
     }
 
+    if (value == "priority_tail_aging" || value == "tail_priority") {
+        return SchedulerPolicyKind::PriorityTailAging;
+    }
+
     if (value == "slo" || value == "slo_aware") {
         return SchedulerPolicyKind::SloAware;
     }
@@ -77,7 +81,9 @@ void print_usage(const char* program) {
         << "  --deadline-urgency-weight=N\n"
         << "  --aging-boost-per-ms=N\n"
         << "  --token-cost-penalty=N\n"
-        << "  --policy=fifo|priority|priority_fair|slo|session_aware\n";
+        << "  --tail-aging-threshold-ms=N\n"
+        << "  --tail-aging-boost-per-ms=N\n"
+        << "  --policy=fifo|priority|priority_fair|priority_tail_aging|slo|session_aware\n";
 }
 
 AppConfig parse_args(int argc, char** argv) {
@@ -149,6 +155,12 @@ AppConfig parse_args(int argc, char** argv) {
                 std::stod(value_after_equals(arg));
         } else if (starts_with(arg, "--token-cost-penalty=")) {
             config.scheduler.token_cost_penalty =
+                std::stod(value_after_equals(arg));
+        } else if (starts_with(arg, "--tail-aging-threshold-ms=")) {
+            config.scheduler.tail_aging_threshold_ms =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--tail-aging-boost-per-ms=")) {
+            config.scheduler.tail_aging_boost_per_ms =
                 std::stod(value_after_equals(arg));
         } else if (starts_with(arg, "--policy=")) {
             config.scheduler.policy_kind =

@@ -455,13 +455,16 @@ std::vector<SchedulerConfig> make_policy_configs() {
     SchedulerConfig priority_fair;
     priority_fair.policy_kind = SchedulerPolicyKind::PriorityFair;
 
+    SchedulerConfig priority_tail_aging;
+    priority_tail_aging.policy_kind = SchedulerPolicyKind::PriorityTailAging;
+
     SchedulerConfig slo;
     slo.policy_kind = SchedulerPolicyKind::SloAware;
 
     SchedulerConfig session_aware;
     session_aware.policy_kind = SchedulerPolicyKind::SessionAwareHybrid;
 
-    return {fifo, priority, priority_fair, slo, session_aware};
+    return {fifo, priority, priority_fair, priority_tail_aging, slo, session_aware};
 }
 
 BenchmarkResult run_case(
@@ -543,7 +546,7 @@ CliOptions parse_args(int argc, char** argv) {
             std::cout
                 << "Usage: " << argv[0]
                 << " [--case=all|agent_resume|chat_burst|rag_long_prefill|codegen_decode_pressure]"
-                << " [--policy=all|fifo|priority|priority_fair|slo|session_aware]"
+                << " [--policy=all|fifo|priority|priority_fair|priority_tail_aging|slo|session_aware]"
                 << " [--list-cases]\n";
             std::exit(0);
         } else if (arg == "--list-cases") {

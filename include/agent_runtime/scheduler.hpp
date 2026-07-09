@@ -14,6 +14,7 @@ enum class SchedulerPolicyKind {
     Fifo,
     Priority,
     PriorityFair,
+    PriorityTailAging,
     SloAware,
     SessionAwareHybrid
 };
@@ -32,6 +33,8 @@ struct SchedulerConfig {
     double deadline_urgency_weight = 1000.0;
     double aging_boost_per_ms = 0.01;
     double token_cost_penalty = 0.01;
+    int tail_aging_threshold_ms = 12000;
+    double tail_aging_boost_per_ms = 0.002;
 };
 
 std::string scheduler_policy_name(SchedulerPolicyKind policy_kind);
