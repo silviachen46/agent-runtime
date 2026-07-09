@@ -24,6 +24,12 @@ struct RuntimeServiceConfig {
     std::size_t max_inflight_backend_requests = 8;
     std::size_t max_runtime_queue_depth = 1000;
     std::size_t reserved_focus_slots = 0;
+    bool cost_aware_admission = false;
+    int long_decode_token_threshold = 128;
+    std::size_t max_background_long_decode_inflight = 0;
+    int max_inflight_decode_tokens = 0;
+    int max_inflight_estimated_tokens = 0;
+    int warm_session_ttl_ms = 30000;
     int admission_window_ms = 0;
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 50;
@@ -44,6 +50,16 @@ struct RuntimeServiceSnapshot {
     std::size_t max_inflight_backend_requests = 0;
     std::size_t max_runtime_queue_depth = 0;
     std::size_t reserved_focus_slots = 0;
+    bool cost_aware_admission = false;
+    int long_decode_token_threshold = 0;
+    std::size_t max_background_long_decode_inflight = 0;
+    int max_inflight_decode_tokens = 0;
+    int max_inflight_estimated_tokens = 0;
+    int inflight_decode_tokens = 0;
+    int inflight_estimated_tokens = 0;
+    std::size_t inflight_background_long_decode_requests = 0;
+    int warm_session_ttl_ms = 0;
+    std::size_t warm_sessions = 0;
     int admission_window_ms = 0;
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 0;
@@ -94,8 +110,22 @@ private:
         int total_latency_ms = 0;
     };
 
+    struct AdmissionCost {
+        bool focus = false;
+        bool session_warm = false;
+        bool background_long_decode = false;
+        int estimated_prefill_tokens = 0;
+        int estimated_decode_tokens = 0;
+        int estimated_total_tokens = 0;
+    };
+
     void dispatcher_loop();
     bool can_dispatch_locked() const;
+    AdmissionCost estimate_admission_cost_locked(const ReadyTurn& turn) const;
+    bool can_admit_cost_locked(const AdmissionCost& cost) const;
+    void record_inflight_cost_locked(const AdmissionCost& cost);
+    void release_inflight_cost_locked(const AdmissionCost& cost);
+    std::size_t warm_session_count_locked(TimePoint now) const;
     void dispatch_ready_turns_locked();
     void launch_backend_execution_locked(RuntimeAdmittedTurn admitted);
     void finish_backend_execution(
@@ -121,8 +151,12 @@ private:
     std::unordered_map<std::string, std::promise<RuntimeRunResult>> pending_;
     std::vector<ExecutionThread> execution_threads_;
     std::size_t inflight_backend_requests_ = 0;
+    int inflight_decode_tokens_ = 0;
+    int inflight_estimated_tokens_ = 0;
+    std::size_t inflight_background_long_decode_requests_ = 0;
     std::size_t completed_requests_ = 0;
     std::size_t rejected_requests_ = 0;
+    std::unordered_map<std::string, TimePoint> session_last_completed_at_;
     bool stopping_ = false;
 };
 

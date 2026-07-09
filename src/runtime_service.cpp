@@ -138,8 +138,16 @@ int percentile(std::vector<int> values, double q) {
 
 bool is_focus_turn(const ReadyTurn& turn) {
     return turn.turn_type == TurnType::ResumeGenerate ||
-           turn.session_policy.visibility == UserVisibility::Foreground ||
            turn.session_policy.priority > 0;
+}
+
+int estimate_prompt_tokens(const ReadyTurn& turn) {
+    std::size_t chars = 0;
+    for (const auto& message : turn.spec.messages) {
+        chars += message.content.size();
+    }
+
+    return static_cast<int>((chars + 3) / 4);
 }
 
 } // namespace
@@ -176,6 +184,22 @@ RuntimeService::RuntimeService(
         service_config_.reserved_focus_slots,
         service_config_.max_inflight_backend_requests
     );
+
+    if (service_config_.long_decode_token_threshold < 1) {
+        service_config_.long_decode_token_threshold = 1;
+    }
+
+    if (service_config_.max_inflight_decode_tokens < 0) {
+        service_config_.max_inflight_decode_tokens = 0;
+    }
+
+    if (service_config_.max_inflight_estimated_tokens < 0) {
+        service_config_.max_inflight_estimated_tokens = 0;
+    }
+
+    if (service_config_.warm_session_ttl_ms < 0) {
+        service_config_.warm_session_ttl_ms = 0;
+    }
 
     if (service_config_.admission_window_ms < 0) {
         service_config_.admission_window_ms = 0;
@@ -295,6 +319,22 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
     state.max_runtime_queue_depth =
         service_config_.max_runtime_queue_depth;
     state.reserved_focus_slots = service_config_.reserved_focus_slots;
+    state.cost_aware_admission = service_config_.cost_aware_admission;
+    state.long_decode_token_threshold =
+        service_config_.long_decode_token_threshold;
+    state.max_background_long_decode_inflight =
+        service_config_.max_background_long_decode_inflight;
+    state.max_inflight_decode_tokens =
+        service_config_.max_inflight_decode_tokens;
+    state.max_inflight_estimated_tokens =
+        service_config_.max_inflight_estimated_tokens;
+    state.inflight_decode_tokens = inflight_decode_tokens_;
+    state.inflight_estimated_tokens = inflight_estimated_tokens_;
+    state.inflight_background_long_decode_requests =
+        inflight_background_long_decode_requests_;
+    state.warm_session_ttl_ms = service_config_.warm_session_ttl_ms;
+    state.warm_sessions =
+        warm_session_count_locked(std::chrono::steady_clock::now());
     state.admission_window_ms = service_config_.admission_window_ms;
     state.is_adaptive = service_config_.is_adaptive;
     state.adaptive_window_size = service_config_.adaptive_window_size;
@@ -352,6 +392,115 @@ bool RuntimeService::can_dispatch_locked() const {
                service_config_.max_inflight_backend_requests;
 }
 
+RuntimeService::AdmissionCost RuntimeService::estimate_admission_cost_locked(
+    const ReadyTurn& turn
+) const {
+    const TimePoint now = std::chrono::steady_clock::now();
+    const auto warm_it = session_last_completed_at_.find(turn.session_id);
+    const bool warm =
+        service_config_.warm_session_ttl_ms > 0 &&
+        warm_it != session_last_completed_at_.end() &&
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - warm_it->second
+        ).count() <= service_config_.warm_session_ttl_ms;
+
+    AdmissionCost cost;
+    cost.focus = is_focus_turn(turn);
+    cost.session_warm = warm;
+    cost.estimated_prefill_tokens = warm ? 0 : estimate_prompt_tokens(turn);
+    cost.estimated_decode_tokens = std::max(turn.spec.max_tokens, 0);
+    cost.estimated_total_tokens =
+        cost.estimated_prefill_tokens + cost.estimated_decode_tokens;
+    cost.background_long_decode =
+        !cost.focus &&
+        cost.estimated_decode_tokens >=
+            service_config_.long_decode_token_threshold;
+
+    return cost;
+}
+
+bool RuntimeService::can_admit_cost_locked(
+    const AdmissionCost& cost
+) const {
+    if (!service_config_.cost_aware_admission) {
+        return true;
+    }
+
+    if (inflight_backend_requests_ == 0) {
+        return true;
+    }
+
+    if (cost.background_long_decode &&
+        service_config_.max_background_long_decode_inflight > 0 &&
+        inflight_background_long_decode_requests_ >=
+            service_config_.max_background_long_decode_inflight) {
+        return false;
+    }
+
+    if (!cost.focus &&
+        service_config_.max_inflight_decode_tokens > 0 &&
+        inflight_decode_tokens_ + cost.estimated_decode_tokens >
+            service_config_.max_inflight_decode_tokens) {
+        return false;
+    }
+
+    if (!cost.focus &&
+        service_config_.max_inflight_estimated_tokens > 0 &&
+        inflight_estimated_tokens_ + cost.estimated_total_tokens >
+            service_config_.max_inflight_estimated_tokens) {
+        return false;
+    }
+
+    return true;
+}
+
+void RuntimeService::record_inflight_cost_locked(
+    const AdmissionCost& cost
+) {
+    inflight_decode_tokens_ += cost.estimated_decode_tokens;
+    inflight_estimated_tokens_ += cost.estimated_total_tokens;
+    if (cost.background_long_decode) {
+        ++inflight_background_long_decode_requests_;
+    }
+}
+
+void RuntimeService::release_inflight_cost_locked(
+    const AdmissionCost& cost
+) {
+    inflight_decode_tokens_ = std::max(
+        inflight_decode_tokens_ - cost.estimated_decode_tokens,
+        0
+    );
+    inflight_estimated_tokens_ = std::max(
+        inflight_estimated_tokens_ - cost.estimated_total_tokens,
+        0
+    );
+
+    if (cost.background_long_decode &&
+        inflight_background_long_decode_requests_ > 0) {
+        --inflight_background_long_decode_requests_;
+    }
+}
+
+std::size_t RuntimeService::warm_session_count_locked(TimePoint now) const {
+    if (service_config_.warm_session_ttl_ms <= 0) {
+        return 0;
+    }
+
+    std::size_t count = 0;
+    for (const auto& entry : session_last_completed_at_) {
+        const auto age_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - entry.second
+            ).count();
+        if (age_ms <= service_config_.warm_session_ttl_ms) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
 void RuntimeService::dispatch_ready_turns_locked() {
     while (can_dispatch_locked()) {
         const bool focus_queued = runtime_.queued_focus_turn_count() > 0;
@@ -364,14 +513,23 @@ void RuntimeService::dispatch_ready_turns_locked() {
             inflight_backend_requests_ >= background_capacity;
 
         auto admitted = runtime_.admit_next_matching(
-            [reserve_for_focus](const ReadyTurn& turn) {
-                return !reserve_for_focus || is_focus_turn(turn);
+            [this, reserve_for_focus](const ReadyTurn& turn) {
+                if (reserve_for_focus && !is_focus_turn(turn)) {
+                    return false;
+                }
+
+                return can_admit_cost_locked(
+                    estimate_admission_cost_locked(turn)
+                );
             }
         );
         if (!admitted.has_value()) {
             return;
         }
 
+        record_inflight_cost_locked(
+            estimate_admission_cost_locked(admitted->turn)
+        );
         ++inflight_backend_requests_;
         launch_backend_execution_locked(std::move(*admitted));
     }
@@ -408,6 +566,9 @@ void RuntimeService::finish_backend_execution(
     {
         std::lock_guard<std::mutex> lock(mu_);
 
+        const AdmissionCost cost =
+            estimate_admission_cost_locked(admitted.turn);
+        release_inflight_cost_locked(cost);
         runtime_.complete_turn(admitted.turn);
 
         RuntimeRunResult result;
@@ -423,6 +584,7 @@ void RuntimeService::finish_backend_execution(
         record_adaptive_feedback_locked(result);
         maybe_update_adaptive_policy_locked();
 
+        const std::string completed_session_id = result.turn.session_id;
         auto it = pending_.find(result.turn.turn_id);
         if (it != pending_.end()) {
             it->second.set_value(std::move(result));
@@ -431,6 +593,8 @@ void RuntimeService::finish_backend_execution(
 
         --inflight_backend_requests_;
         ++completed_requests_;
+        session_last_completed_at_[completed_session_id] =
+            std::chrono::steady_clock::now();
     }
 
     cv_.notify_all();

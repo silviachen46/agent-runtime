@@ -10,7 +10,6 @@ namespace {
 
 bool is_focus_turn(const ReadyTurn& turn) {
     return turn.turn_type == TurnType::ResumeGenerate ||
-           turn.session_policy.visibility == UserVisibility::Foreground ||
            turn.session_policy.priority > 0;
 }
 

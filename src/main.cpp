@@ -71,6 +71,12 @@ void print_usage(const char* program) {
         << "  --max-inflight=N\n"
         << "  --max-queue=N\n"
         << "  --reserved-focus-slots=N\n"
+        << "  --cost-aware-admission=true|false\n"
+        << "  --long-decode-token-threshold=N\n"
+        << "  --max-background-long-decode-inflight=N\n"
+        << "  --max-inflight-decode-tokens=N\n"
+        << "  --max-inflight-estimated-tokens=N\n"
+        << "  --warm-session-ttl-ms=N\n"
         << "  --admission-window-ms=N\n"
         << "  --is-adaptive=true|false\n"
         << "  --adaptive-window-size=N\n"
@@ -119,6 +125,34 @@ AppConfig parse_args(int argc, char** argv) {
                 static_cast<std::size_t>(
                     std::stoul(value_after_equals(arg))
                 );
+        } else if (starts_with(arg, "--cost-aware-admission=")) {
+            const std::string value = value_after_equals(arg);
+            if (value == "true" || value == "1" || value == "yes") {
+                config.service.cost_aware_admission = true;
+            } else if (value == "false" || value == "0" || value == "no") {
+                config.service.cost_aware_admission = false;
+            } else {
+                throw std::invalid_argument(
+                    "--cost-aware-admission must be true or false"
+                );
+            }
+        } else if (starts_with(arg, "--long-decode-token-threshold=")) {
+            config.service.long_decode_token_threshold =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--max-background-long-decode-inflight=")) {
+            config.service.max_background_long_decode_inflight =
+                static_cast<std::size_t>(
+                    std::stoul(value_after_equals(arg))
+                );
+        } else if (starts_with(arg, "--max-inflight-decode-tokens=")) {
+            config.service.max_inflight_decode_tokens =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--max-inflight-estimated-tokens=")) {
+            config.service.max_inflight_estimated_tokens =
+                std::stoi(value_after_equals(arg));
+        } else if (starts_with(arg, "--warm-session-ttl-ms=")) {
+            config.service.warm_session_ttl_ms =
+                std::stoi(value_after_equals(arg));
         } else if (starts_with(arg, "--admission-window-ms=")) {
             config.service.admission_window_ms =
                 std::stoi(value_after_equals(arg));

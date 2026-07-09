@@ -125,6 +125,18 @@ json to_json(const RuntimeServiceSnapshot& state) {
             {"reserved_focus_slots", state.reserved_focus_slots},
             {"admission_window_ms", state.admission_window_ms}
         }},
+        {"cost_aware", {
+            {"enabled", state.cost_aware_admission},
+            {"long_decode_token_threshold", state.long_decode_token_threshold},
+            {"max_background_long_decode_inflight", state.max_background_long_decode_inflight},
+            {"max_inflight_decode_tokens", state.max_inflight_decode_tokens},
+            {"max_inflight_estimated_tokens", state.max_inflight_estimated_tokens},
+            {"inflight_decode_tokens", state.inflight_decode_tokens},
+            {"inflight_estimated_tokens", state.inflight_estimated_tokens},
+            {"inflight_background_long_decode_requests", state.inflight_background_long_decode_requests},
+            {"warm_session_ttl_ms", state.warm_session_ttl_ms},
+            {"warm_sessions", state.warm_sessions}
+        }},
         {"requests", {
             {"completed", state.completed_requests},
             {"rejected", state.rejected_requests}
