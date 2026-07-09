@@ -111,6 +111,16 @@ std::size_t Scheduler::size() const {
     return ready_queue_.size();
 }
 
+std::size_t Scheduler::count_matching(
+    const std::function<bool(const ReadyTurn&)>& predicate
+) const {
+    std::lock_guard<std::mutex> lock(mu_);
+
+    return static_cast<std::size_t>(
+        std::count_if(ready_queue_.begin(), ready_queue_.end(), predicate)
+    );
+}
+
 
 double Scheduler::score_turn(const ReadyTurn& turn, TimePoint now) const {
     if (config_.policy_kind == SchedulerPolicyKind::Priority) {
@@ -186,6 +196,14 @@ bool Scheduler::is_better(
 }
 
 std::optional<ReadyTurn> Scheduler::pick_next() {
+    return pick_next_matching([](const ReadyTurn&) {
+        return true;
+    });
+}
+
+std::optional<ReadyTurn> Scheduler::pick_next_matching(
+    const std::function<bool(const ReadyTurn&)>& predicate
+) {
     std::lock_guard<std::mutex> lock(mu_);
 
     if (ready_queue_.empty()) {
@@ -194,16 +212,27 @@ std::optional<ReadyTurn> Scheduler::pick_next() {
 
     const TimePoint now = std::chrono::steady_clock::now();
 
-    std::size_t best_idx = 0;
+    std::optional<std::size_t> best_idx;
 
-    for (std::size_t i = 1; i < ready_queue_.size(); ++i) {
-        if (is_better(ready_queue_[i], ready_queue_[best_idx], now)) {
+    for (std::size_t i = 0; i < ready_queue_.size(); ++i) {
+        if (!predicate(ready_queue_[i])) {
+            continue;
+        }
+
+        if (!best_idx.has_value() ||
+            is_better(ready_queue_[i], ready_queue_[*best_idx], now)) {
             best_idx = i;
         }
     }
 
-    ReadyTurn selected = std::move(ready_queue_[best_idx]);
-    ready_queue_.erase(ready_queue_.begin() + static_cast<std::ptrdiff_t>(best_idx));
+    if (!best_idx.has_value()) {
+        return std::nullopt;
+    }
+
+    ReadyTurn selected = std::move(ready_queue_[*best_idx]);
+    ready_queue_.erase(
+        ready_queue_.begin() + static_cast<std::ptrdiff_t>(*best_idx)
+    );
 
     return selected;
 }

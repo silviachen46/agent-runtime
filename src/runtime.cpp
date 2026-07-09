@@ -6,6 +6,16 @@
 
 namespace ar {
 
+namespace {
+
+bool is_focus_turn(const ReadyTurn& turn) {
+    return turn.turn_type == TurnType::ResumeGenerate ||
+           turn.session_policy.visibility == UserVisibility::Foreground ||
+           turn.session_policy.priority > 0;
+}
+
+} // namespace
+
 Runtime::Runtime(
     SchedulerConfig scheduler_config,
     MockBackendConfig backend_config
@@ -65,7 +75,15 @@ std::optional<std::string> Runtime::submit_turn_with_id(const TurnSpec& spec) {
 }
 
 std::optional<RuntimeAdmittedTurn> Runtime::admit_next() {
-    auto ready = scheduler_.pick_next();
+    return admit_next_matching([](const ReadyTurn&) {
+        return true;
+    });
+}
+
+std::optional<RuntimeAdmittedTurn> Runtime::admit_next_matching(
+    const std::function<bool(const ReadyTurn&)>& predicate
+) {
+    auto ready = scheduler_.pick_next_matching(predicate);
     if (!ready.has_value()) {
         return std::nullopt;
     }
@@ -136,6 +154,10 @@ SchedulerConfig Runtime::scheduler_config() const {
 
 std::size_t Runtime::queued_turn_count() const {
     return scheduler_.size();
+}
+
+std::size_t Runtime::queued_focus_turn_count() const {
+    return scheduler_.count_matching(is_focus_turn);
 }
 
 std::optional<SessionState> Runtime::get_session(

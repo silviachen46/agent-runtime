@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -41,6 +42,9 @@ public:
     std::optional<std::string> submit_turn_with_id(const TurnSpec& spec);
 
     std::optional<RuntimeAdmittedTurn> admit_next();
+    std::optional<RuntimeAdmittedTurn> admit_next_matching(
+        const std::function<bool(const ReadyTurn&)>& predicate
+    );
     BackendResult execute_backend(const TurnSpec& spec) const;
     void complete_turn(const ReadyTurn& turn);
 
@@ -51,6 +55,7 @@ public:
     SchedulerConfig scheduler_config() const;
 
     std::size_t queued_turn_count() const;
+    std::size_t queued_focus_turn_count() const;
     std::optional<SessionState> get_session(const std::string& session_id) const;
 
 private:

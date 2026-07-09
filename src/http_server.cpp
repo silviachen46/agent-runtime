@@ -104,7 +104,9 @@ json to_json(const SchedulerConfig& config) {
         {"latency_sensitive_boost", config.latency_sensitive_boost},
         {"deadline_urgency_weight", config.deadline_urgency_weight},
         {"aging_boost_per_ms", config.aging_boost_per_ms},
-        {"token_cost_penalty", config.token_cost_penalty}
+        {"token_cost_penalty", config.token_cost_penalty},
+        {"tail_aging_threshold_ms", config.tail_aging_threshold_ms},
+        {"tail_aging_boost_per_ms", config.tail_aging_boost_per_ms}
     };
 }
 
@@ -120,6 +122,7 @@ json to_json(const RuntimeServiceSnapshot& state) {
         {"backend", {
             {"inflight_requests", state.inflight_backend_requests},
             {"max_inflight_requests", state.max_inflight_backend_requests},
+            {"reserved_focus_slots", state.reserved_focus_slots},
             {"admission_window_ms", state.admission_window_ms}
         }},
         {"requests", {

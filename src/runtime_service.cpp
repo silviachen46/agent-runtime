@@ -172,6 +172,11 @@ RuntimeService::RuntimeService(
         service_config_.max_runtime_queue_depth = 1;
     }
 
+    service_config_.reserved_focus_slots = std::min(
+        service_config_.reserved_focus_slots,
+        service_config_.max_inflight_backend_requests
+    );
+
     if (service_config_.admission_window_ms < 0) {
         service_config_.admission_window_ms = 0;
     }
@@ -289,6 +294,7 @@ RuntimeServiceSnapshot RuntimeService::snapshot() const {
         service_config_.max_inflight_backend_requests;
     state.max_runtime_queue_depth =
         service_config_.max_runtime_queue_depth;
+    state.reserved_focus_slots = service_config_.reserved_focus_slots;
     state.admission_window_ms = service_config_.admission_window_ms;
     state.is_adaptive = service_config_.is_adaptive;
     state.adaptive_window_size = service_config_.adaptive_window_size;
@@ -348,7 +354,20 @@ bool RuntimeService::can_dispatch_locked() const {
 
 void RuntimeService::dispatch_ready_turns_locked() {
     while (can_dispatch_locked()) {
-        auto admitted = runtime_.admit_next();
+        const bool focus_queued = runtime_.queued_focus_turn_count() > 0;
+        const std::size_t background_capacity =
+            service_config_.max_inflight_backend_requests -
+            service_config_.reserved_focus_slots;
+        const bool reserve_for_focus =
+            focus_queued &&
+            service_config_.reserved_focus_slots > 0 &&
+            inflight_backend_requests_ >= background_capacity;
+
+        auto admitted = runtime_.admit_next_matching(
+            [reserve_for_focus](const ReadyTurn& turn) {
+                return !reserve_for_focus || is_focus_turn(turn);
+            }
+        );
         if (!admitted.has_value()) {
             return;
         }

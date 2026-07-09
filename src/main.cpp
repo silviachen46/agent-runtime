@@ -70,6 +70,7 @@ void print_usage(const char* program) {
         << "  --api-key=KEY\n"
         << "  --max-inflight=N\n"
         << "  --max-queue=N\n"
+        << "  --reserved-focus-slots=N\n"
         << "  --admission-window-ms=N\n"
         << "  --is-adaptive=true|false\n"
         << "  --adaptive-window-size=N\n"
@@ -110,6 +111,11 @@ AppConfig parse_args(int argc, char** argv) {
                 );
         } else if (starts_with(arg, "--max-queue=")) {
             config.service.max_runtime_queue_depth =
+                static_cast<std::size_t>(
+                    std::stoul(value_after_equals(arg))
+                );
+        } else if (starts_with(arg, "--reserved-focus-slots=")) {
+            config.service.reserved_focus_slots =
                 static_cast<std::size_t>(
                     std::stoul(value_after_equals(arg))
                 );

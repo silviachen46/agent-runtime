@@ -23,6 +23,7 @@ namespace ar {
 struct RuntimeServiceConfig {
     std::size_t max_inflight_backend_requests = 8;
     std::size_t max_runtime_queue_depth = 1000;
+    std::size_t reserved_focus_slots = 0;
     int admission_window_ms = 0;
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 50;
@@ -42,6 +43,7 @@ struct RuntimeServiceSnapshot {
     std::size_t rejected_requests = 0;
     std::size_t max_inflight_backend_requests = 0;
     std::size_t max_runtime_queue_depth = 0;
+    std::size_t reserved_focus_slots = 0;
     int admission_window_ms = 0;
     bool is_adaptive = false;
     std::size_t adaptive_window_size = 0;

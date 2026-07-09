@@ -3,6 +3,7 @@
 #include "types.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -50,12 +51,18 @@ public:
 
     void enqueue(ReadyTurn turn);
     std::optional<ReadyTurn> pick_next();
+    std::optional<ReadyTurn> pick_next_matching(
+        const std::function<bool(const ReadyTurn&)>& predicate
+    );
 
     void update_config(const SchedulerConfig& config);
     SchedulerConfig config() const;
 
     bool empty() const;
     std::size_t size() const;
+    std::size_t count_matching(
+        const std::function<bool(const ReadyTurn&)>& predicate
+    ) const;
 
 private:
     double score_turn(const ReadyTurn& turn, TimePoint now) const;
